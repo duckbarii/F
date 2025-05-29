@@ -1,325 +1,969 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sexy Glassmorphic Music Player</title>
-<style>
-  /* Glassmorphic background & styles */
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
-  * {
-    box-sizing: border-box;
-  }
-  body {
-    margin: 0;
-    font-family: 'Poppins', sans-serif;
-    height: 100vh;
-    background: linear-gradient(135deg, #1f1c2c, #928dab);
-    overflow: hidden;
-    color: #eee;
-  }
-  #app {
-    position: relative;
-    max-width: 420px;
-    margin: 40px auto;
-    padding: 20px;
-    border-radius: 20px;
-    backdrop-filter: blur(20px);
-    background: rgba(255 255 255 / 0.05);
-    box-shadow:
-      0 4px 30px rgba(0, 0, 0, 0.5),
-      inset 0 0 60px rgba(255,255,255,0.1);
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sexy Glassmorphic Music Player</title>
+    <!-- Add a nice font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Add vector icons (Font Awesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-  h1 {
-    text-align: center;
-    font-weight: 700;
-    margin-bottom: 16px;
-  }
+    <style>
+        /* Reset basic margins and padding */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            color: #fff;
+            /* Initial background - will be replaced by album art blur */
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden; /* Prevent scrollbar due to blur */
+            transition: background 0.5s ease; /* Smooth background transition */
+        }
 
-  select, input[type="text"] {
-    width: 100%;
-    border-radius: 12px;
-    border: none;
-    padding: 10px 14px;
-    margin-bottom: 10px;
-    font-size: 1rem;
-    background: rgba(255 255 255 / 0.1);
-    color: #eee;
-  }
+        /* Container for the dynamic background effect */
+        .background-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            filter: blur(50px); /* Heavy blur for the background effect */
+            z-index: 0;
+            transition: background-image 0.5s ease, filter 0.5s ease;
+            /* Optional: Add a subtle overlay color on top of the blur */
+            &::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.3); /* Dark overlay */
+                z-index: 1;
+            }
+        }
 
-  button {
-    width: 100%;
-    padding: 12px;
-    background: #f72585;
-    border: none;
-    border-radius: 12px;
-    color: white;
-    font-weight: 700;
-    cursor: pointer;
-    margin-bottom: 16px;
-    transition: background 0.3s ease;
-  }
-  button:hover {
-    background: #d81e6a;
-  }
+        .player-container {
+            position: relative;
+            z-index: 1; /* Ensure player is above the blurred background */
+            background: rgba(255, 255, 255, 0.1); /* Semi-transparent white for glass effect */
+            border-radius: 25px; /* Rounded corners */
+            border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); /* Glassmorphic shadow */
+            backdrop-filter: blur(10px); /* The core glassmorphic blur */
+            -webkit-backdrop-filter: blur(10px); /* For older browsers */
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90%;
+            max-width: 500px; /* Max width for player */
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
 
-  .track-list {
-    max-height: 250px;
-    overflow-y: auto;
-    margin-bottom: 16px;
-  }
+         /* Dark Mode Styles */
+         body.dark-mode {
+             background: linear-gradient(135deg, #0a0a1a, #0c1424, #081b30);
+             color: #eee;
+         }
 
-  .track-item {
-    display: flex;
-    align-items: center;
-    background: rgba(255 255 255 / 0.05);
-    margin-bottom: 8px;
-    border-radius: 12px;
-    cursor: pointer;
-    padding: 8px 10px;
-    transition: background 0.3s ease;
-  }
-  .track-item:hover {
-    background: rgba(255 255 255 / 0.15);
-  }
+        body.dark-mode .player-container {
+            background: rgba(0, 0, 0, 0.2); /* Darker semi-transparent for glass effect */
+            border: 1px solid rgba(50, 50, 50, 0.5); /* Darker border */
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
 
-  .track-item img {
-    width: 50px;
-    height: 50px;
-    border-radius: 8px;
-    object-fit: cover;
-    margin-right: 12px;
-  }
+        body.dark-mode .search-container input,
+        body.dark-mode .volume-container input[type="range"],
+        body.dark-mode .progress-container input[type="range"],
+        body.dark-mode .api-select select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #eee;
+        }
 
-  .track-info {
-    flex: 1;
-  }
+        body.dark-mode .search-results li {
+            background: rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(50, 50, 50, 0.5);
+        }
 
-  .track-title {
-    font-weight: 700;
-    font-size: 1rem;
-  }
-  .track-artist {
-    font-size: 0.85rem;
-    opacity: 0.8;
-  }
+        body.dark-mode .search-results li:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
 
-  audio {
-    width: 100%;
-    outline: none;
-    margin-bottom: 16px;
-    border-radius: 12px;
-  }
+        /* Album Art */
+        .album-art {
+            width: 250px;
+            height: 250px;
+            border-radius: 15px;
+            object-fit: cover;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
 
-  .volume-control {
-    display: flex;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  .volume-control input[type=range] {
-    flex: 1;
-    margin-left: 8px;
-  }
+        .album-art:hover {
+            transform: scale(1.05);
+        }
 
-  .dark-light-toggle {
-    text-align: center;
-    margin-bottom: 16px;
-  }
-  .dark-light-toggle button {
-    width: auto;
-    padding: 8px 24px;
-    background: #3a0ca3;
-  }
+        /* Track Info */
+        .track-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
 
-  /* Background blur based on thumbnail */
-  #bg-blur {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    filter: blur(40px);
-    background-position: center;
-    background-size: cover;
-    z-index: -1;
-    transition: background-image 0.5s ease-in-out;
-  }
+        .track-info h2 {
+            margin: 0 0 5px 0;
+            font-size: 1.5em;
+            font-weight: 600;
+            word-break: break-word; /* Prevent long titles breaking layout */
+        }
 
-</style>
+        .track-info p {
+            margin: 0;
+            font-size: 1em;
+            font-weight: 300;
+            opacity: 0.8;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+
+        .control-button {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            border-radius: 50%;
+            width: 55px;
+            height: 55px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.1s ease;
+            color: #fff;
+            font-size: 1.2em;
+        }
+
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .control-button:active {
+            transform: scale(0.95);
+        }
+
+        .control-button.play-pause {
+             width: 70px;
+             height: 70px;
+             font-size: 1.8em;
+        }
+
+         body.dark-mode .control-button {
+             background: rgba(0, 0, 0, 0.3);
+             color: #eee;
+         }
+          body.dark-mode .control-button:hover {
+             background: rgba(0, 0, 0, 0.4);
+         }
+
+
+        /* Progress Bar */
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .progress-container .current-time,
+        .progress-container .duration {
+            font-size: 0.8em;
+            min-width: 40px; /* Prevent time text from jumping */
+            text-align: center;
+             opacity: 0.7;
+        }
+
+        .progress-container input[type="range"] {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+             transition: background 0.3s ease;
+        }
+
+        .progress-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+         .progress-container input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+
+        /* Volume Control */
+        .volume-container {
+             display: flex;
+             align-items: center;
+             gap: 10px;
+             width: 100%;
+             max-width: 200px; /* Limit volume slider width */
+             margin-bottom: 20px;
+        }
+
+         .volume-container i {
+             font-size: 1.1em;
+             opacity: 0.8;
+         }
+
+         .volume-container input[type="range"] {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+             transition: background 0.3s ease;
+        }
+
+         .volume-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+
+         .volume-container input[type="range"]::-moz-range-thumb {
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+
+
+        /* Search */
+        .search-container {
+            width: 100%;
+            margin-bottom: 20px;
+             position: relative; /* Needed for dropdown positioning */
+        }
+
+        .search-container input[type="text"] {
+            width: calc(100% - 20px); /* Adjust for padding */
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+
+        .search-container input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .search-container input[type="text"]:focus {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .search-results {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+            max-height: 200px; /* Limit height and add scroll */
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1); /* Glass effect for results */
+             border-radius: 8px;
+             border: 1px solid rgba(255, 255, 255, 0.2);
+             backdrop-filter: blur(5px);
+             -webkit-backdrop-filter: blur(5px);
+        }
+
+         .search-results li {
+             padding: 10px;
+             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+             cursor: pointer;
+             transition: background 0.2s ease;
+             display: flex;
+             align-items: center;
+         }
+
+         .search-results li:last-child {
+             border-bottom: none;
+         }
+
+         .search-results li:hover {
+             background: rgba(255, 255, 255, 0.2);
+         }
+
+         .search-results .result-artwork {
+             width: 40px;
+             height: 40px;
+             border-radius: 4px;
+             margin-right: 10px;
+             object-fit: cover;
+         }
+
+         .search-results .result-info {
+             flex-grow: 1;
+         }
+
+         .search-results .result-info div {
+            font-weight: 600;
+             margin-bottom: 2px;
+         }
+
+          .search-results .result-info small {
+             font-size: 0.8em;
+             opacity: 0.8;
+          }
+
+         /* API Selection */
+         .api-select {
+             width: 100%;
+             margin-bottom: 20px;
+         }
+
+         .api-select label {
+             display: block;
+             margin-bottom: 5px;
+             font-weight: 600;
+             opacity: 0.9;
+         }
+
+         .api-select select {
+             width: 100%;
+             padding: 10px;
+             border: 1px solid rgba(255, 255, 255, 0.3);
+             border-radius: 8px;
+             background: rgba(255, 255, 255, 0.15);
+             color: #fff;
+             font-size: 1em;
+             outline: none;
+             cursor: pointer;
+             appearance: none; /* Remove default arrow */
+             -webkit-appearance: none;
+             background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2C114.7L159.7%2C242.9c-3.2%2C3.2-7%2C4.6-11.1%2C4.8c-4%2C0.1-7.9-1.3-11.1-4.4L5.4%2C114.7c-3.2-3.2-4.5-7.1-4.4-11.1c0.1-4%2C1.5-7.8%2C4.7-10.9l19.8-20c3.2-3.2%2C7.1-4.6%2C11.1-4.4c4%2C0.1%2C7.9%2C1.5%2C11.1%2C4.7l94.6%2C94.6l94.6-94.6c3.2-3.2%2C7.1-4.5%2C11.1-4.4c4%2C0.1%2C7.9%2C1.4%2C11.1%2C4.6l19.8%2C20c3.2%2C3.1%2C4.6%2C7%2C4.7%2C11c0%2C4.1-1.3%2C7.9-4.5%2C11.2L287%2C114.7z%22%2F%3E%3C%2Fsvg%3E'); /* Custom arrow */
+            background-repeat: no-repeat;
+            background-position: right 10px top 50%;
+            background-size: 12px auto;
+         }
+
+
+        /* Lyrics/Artist Info */
+        .info-section {
+            width: 100%;
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            backdrop-filter: blur(5px);
+             -webkit-backdrop-filter: blur(5px);
+             display: none; /* Hidden by default */
+             transition: opacity 0.3s ease;
+        }
+
+        .info-section h3 {
+             margin-top: 0;
+             margin-bottom: 15px;
+             font-size: 1.2em;
+             font-weight: 600;
+             opacity: 0.9;
+             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+             padding-bottom: 10px;
+        }
+
+         .info-section pre {
+             white-space: pre-wrap; /* Wrap long lines */
+             word-break: break-word;
+             font-family: inherit; /* Use the main font */
+             font-size: 0.9em;
+             line-height: 1.6;
+             opacity: 0.8;
+         }
+
+         body.dark-mode .info-section {
+             background: rgba(0, 0, 0, 0.15);
+             border-bottom: 1px solid rgba(50, 50, 50, 0.5);
+         }
+
+        /* Dark/Light Mode Toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .theme-toggle button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2em;
+            color: #fff;
+            transition: background 0.3s ease, transform 0.1s ease;
+        }
+
+        .theme-toggle button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+         body.dark-mode .theme-toggle button {
+             background: rgba(0, 0, 0, 0.4);
+             color: #eee;
+         }
+          body.dark-mode .theme-toggle button:hover {
+             background: rgba(0, 0, 0, 0.5);
+         }
+
+
+        /* Responsive Adjustments */
+        @media (max-width: 600px) {
+            .player-container {
+                padding: 20px;
+                 max-width: 95%;
+            }
+
+            .album-art {
+                width: 180px;
+                height: 180px;
+            }
+
+            .track-info h2 {
+                font-size: 1.2em;
+            }
+
+            .track-info p {
+                font-size: 0.9em;
+            }
+
+            .controls {
+                gap: 15px;
+            }
+
+            .control-button {
+                width: 45px;
+                height: 45px;
+                font-size: 1em;
+            }
+            .control-button.play-pause {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5em;
+            }
+
+            .progress-container input[type="range"] {
+                height: 6px;
+            }
+             .volume-container {
+                 max-width: 150px;
+             }
+             .volume-container input[type="range"] {
+                 height: 4px;
+             }
+
+             .theme-toggle {
+                 top: 10px;
+                 right: 10px;
+             }
+              .theme-toggle button {
+                 width: 35px;
+                 height: 35px;
+                 font-size: 1em;
+              }
+        }
+    </style>
 </head>
 <body>
-  <div id="bg-blur"></div>
-  <div id="app">
-    <h1>Sexy Glassmorphic Music Player</h1>
-    <select id="api-select" title="Select Music Source">
-      <option value="spotify">Spotify</option>
-      <option value="deezer">Deezer</option>
-      <option value="lastfm">Last.fm</option>
-    </select>
-    <input id="search-input" type="text" placeholder="Search tracks..." />
-    <button id="search-btn">Search</button>
 
-    <div class="track-list" id="track-list"></div>
+    <div class="background-overlay"></div>
 
-    <audio id="audio-player" controls></audio>
-
-    <div class="volume-control">
-      <label for="volume-range">Volume</label>
-      <input id="volume-range" type="range" min="0" max="1" step="0.01" value="0.5" />
-    </div>
-
-    <div class="dark-light-toggle">
-      <button id="toggle-theme">Toggle Dark/Light Mode</button>
-    </div>
-  </div>
-
-<script>
-  const apiSelect = document.getElementById('api-select');
-  const searchInput = document.getElementById('search-input');
-  const searchBtn = document.getElementById('search-btn');
-  const trackList = document.getElementById('track-list');
-  const audioPlayer = document.getElementById('audio-player');
-  const volumeRange = document.getElementById('volume-range');
-  const bgBlur = document.getElementById('bg-blur');
-  const toggleThemeBtn = document.getElementById('toggle-theme');
-
-  let currentTracks = [];
-  let currentIndex = 0;
-
-  // Play selected track
-  function playTrack(index) {
-    if (index < 0 || index >= currentTracks.length) return;
-    currentIndex = index;
-    const track = currentTracks[index];
-    let audioSrc = '';
-
-    if (apiSelect.value === 'spotify') {
-      audioSrc = track.preview_url || '';
-    } else if (apiSelect.value === 'deezer') {
-      audioSrc = track.preview || '';
-    } else if (apiSelect.value === 'lastfm') {
-      // LastFM does not provide audio preview, fallback to empty
-      audioSrc = '';
-    }
-
-    if (!audioSrc) {
-      alert('Audio preview not available for this track');
-      audioPlayer.pause();
-      audioPlayer.src = '';
-      return;
-    }
-
-    audioPlayer.src = audioSrc;
-    audioPlayer.play();
-
-    setBackgroundImage(track.album ? track.album.images[0].url : track.album.cover_medium || track.image || '');
-
-    highlightSelectedTrack();
-  }
-
-  // Set background blurred image from thumbnail
-  function setBackgroundImage(url) {
-    if (!url) {
-      bgBlur.style.backgroundImage = '';
-      return;
-    }
-    bgBlur.style.backgroundImage = `url(${url})`;
-  }
-
-  // Highlight current track in the list
-  function highlightSelectedTrack() {
-    const items = document.querySelectorAll('.track-item');
-    items.forEach((item, idx) => {
-      item.style.backgroundColor = idx === currentIndex ? 'rgba(255 255 255 / 0.2)' : '';
-    });
-  }
-
-  // Render tracks list
-  function renderTracks(tracks) {
-    currentTracks = tracks;
-    trackList.innerHTML = '';
-    if (!tracks.length) {
-      trackList.innerHTML = '<p>No tracks found.</p>';
-      audioPlayer.src = '';
-      setBackgroundImage('');
-      return;
-    }
-    tracks.forEach((track, i) => {
-      const div = document.createElement('div');
-      div.className = 'track-item';
-      div.innerHTML = `
-        <img src="${track.album ? (track.album.images ? track.album.images[0].url : track.album.cover_medium) : (track.picture || '')}" alt="thumbnail" />
-        <div class="track-info">
-          <div class="track-title">${track.name || track.title}</div>
-          <div class="track-artist">${track.artists ? track.artists.map(a=>a.name).join(', ') : track.artist ? track.artist.name : ''}</div>
+    <div class="player-container">
+        <div class="theme-toggle">
+            <button id="themeToggleBtn">
+                <i class="fas fa-sun"></i>
+            </button>
         </div>
-      `;
-      div.onclick = () => playTrack(i);
-      trackList.appendChild(div);
-    });
-  }
 
-  // Fetch tracks from backend
-  async function searchTracks() {
-    const query = searchInput.value.trim();
-    const api = apiSelect.value;
-    if (!query) return alert('Enter search text');
+        <img class="album-art" src="https://via.placeholder.com/250?text=Album+Art" alt="Album Art">
 
-    trackList.innerHTML = '<p>Loading...</p>';
-    audioPlayer.pause();
-    audioPlayer.src = '';
-    setBackgroundImage('');
+        <div class="track-info">
+            <h2 id="trackTitle">Not Playing</h2>
+            <p id="trackArtist">Select a song to play</p>
+        </div>
 
-    try {
-      const res = await fetch(`http://localhost:3000/search?q=${encodeURIComponent(query)}&api=${api}`);
-      const json = await res.json();
+        <div class="controls">
+            <button class="control-button" id="prevBtn"><i class="fas fa-backward"></i></button>
+            <button class="control-button play-pause" id="playPauseBtn"><i class="fas fa-play"></i></button>
+            <button class="control-button" id="nextBtn"><i class="fas fa-forward"></i></button>
+        </div>
 
-      let tracks = [];
-      if (api === 'spotify' && json.data.tracks) {
-        tracks = json.data.tracks.items.map(t => ({
-          name: t.name,
-          preview_url: t.preview_url,
-          album: t.album,
-          artists: t.artists
-        }));
-      } else if (api === 'deezer' && json.data.data) {
-        tracks = json.data.data.map(t => ({
-          title: t.title,
-          preview: t.preview,
-          album: { cover_medium: t.album.cover_medium },
-          artist: { name: t.artist.name },
-          picture: t.album.cover_medium,
-        }));
-      } else if (api === 'lastfm' && json.data.results) {
-        tracks = json.data.results.trackmatches.track.map(t => ({
-          name: t.name,
-          artist: { name: t.artist },
-          // No preview for lastfm
-        }));
-      }
+        <div class="progress-container">
+            <span class="current-time" id="currentTime">0:00</span>
+            <input type="range" id="progressBar" value="0" step="0.1" min="0">
+            <span class="duration" id="duration">0:00</span>
+        </div>
 
-      renderTracks(tracks);
-    } catch (e) {
-      trackList.innerHTML = `<p>Error: ${e.message}</p>`;
-    }
-  }
+         <div class="volume-container">
+             <i class="fas fa-volume-down"></i>
+             <input type="range" id="volumeBar" value="1" step="0.01" min="0" max="1">
+             <i class="fas fa-volume-up"></i>
+         </div>
 
-  searchBtn.onclick = searchTracks;
-  volumeRange.oninput = e => {
-    audioPlayer.volume = e.target.value;
-  };
+        <div class="api-select">
+            <label for="apiSource">Search from:</label>
+            <select id="apiSource">
+                <option value="deezer">Deezer (Previews)</option>
+                <option value="spotify">Spotify (Previews)</option>
+                <option value="lastfm">Last.fm (Metadata Only)</option>
+            </select>
+        </div>
 
-  toggleThemeBtn.onclick = () => {
-    if (document.body.style.background === 'white') {
-      document.body.style.background = 'linear-gradient(135deg, #1f1c2c, #928dab)';
-      document.body.style.color = '#eee';
-    } else {
-      document.body.style.background = 'white';
-      document.body.style.color = '#222';
-    }
-  };
+        <div class="search-container">
+            <input type="text" id="searchQuery" placeholder="Search for songs or artists...">
+            <ul class="search-results" id="searchResults">
+                <!-- Search results will be appended here -->
+            </ul>
+        </div>
 
-  // Initialize volume
-  audioPlayer.volume = 0.5;
-</script>
+         <!-- Placeholder sections for additional info -->
+         <div class="info-section" id="lyricsSection">
+             <h3>Lyrics</h3>
+             <pre id="lyricsContent">Search for a track and click on it to see if lyrics are available...</pre>
+         </div>
+
+         <div class="info-section" id="artistInfoSection">
+             <h3>Artist Info</h3>
+             <pre id="artistInfoContent">Search for a track and click on it to see artist details if available...</pre>
+         </div>
+
+    </div>
+
+    <!-- Hidden Audio Element -->
+    <audio id="audioPlayer"></audio>
+
+    <script>
+        // Get DOM elements
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const prevBtn = document.getElementById('prevBtn'); // Prev/Next are placeholders without playlist logic
+        const nextBtn = document.getElementById('nextBtn'); // Prev/Next are placeholders without playlist logic
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        const volumeBar = document.getElementById('volumeBar');
+        const albumArtEl = document.querySelector('.album-art');
+        const trackTitleEl = document.getElementById('trackTitle');
+        const trackArtistEl = document.getElementById('trackArtist');
+        const backgroundOverlayEl = document.querySelector('.background-overlay');
+        const searchQueryInput = document.getElementById('searchQuery');
+        const searchResultsEl = document.getElementById('searchResults');
+        const apiSourceSelect = document.getElementById('apiSource');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const lyricsSection = document.getElementById('lyricsSection');
+        const lyricsContentEl = document.getElementById('lyricsContent');
+        const artistInfoSection = document.getElementById('artistInfoSection');
+        const artistInfoContentEl = document.getElementById('artistInfoContent');
+
+
+        let currentTrack = null; // Store info about the currently loaded track
+        let isPlaying = false;
+        let searchTimeout = null; // For debouncing search input
+
+        // --- Audio Player Controls ---
+
+        function togglePlayPause() {
+            if (audioPlayer.paused || audioPlayer.ended) {
+                if (audioPlayer.src) { // Check if a source is loaded
+                     audioPlayer.play();
+                }
+            } else {
+                audioPlayer.pause();
+            }
+        }
+
+        playPauseBtn.addEventListener('click', togglePlayPause);
+
+        audioPlayer.addEventListener('play', () => {
+            isPlaying = true;
+            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>'; // Change icon to pause
+        });
+
+        audioPlayer.addEventListener('pause', () => {
+            isPlaying = false;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>'; // Change icon to play
+        });
+
+        audioPlayer.addEventListener('ended', () => {
+            isPlaying = false;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>'; // Change icon to play
+            currentTimeEl.textContent = '0:00'; // Reset time
+            progressBar.value = 0; // Reset progress bar
+             // Optional: Auto-play next track if a playlist exists
+        });
+
+        // Update progress bar and current time
+        audioPlayer.addEventListener('timeupdate', () => {
+            const currentTime = audioPlayer.currentTime;
+            const duration = audioPlayer.duration;
+
+            // Update time displays
+            currentTimeEl.textContent = formatTime(currentTime);
+            if (!isNaN(duration)) { // Check if duration is a valid number
+                durationEl.textContent = formatTime(duration);
+            } else {
+                 durationEl.textContent = '0:00'; // Display 0:00 if duration is not available (e.g., for streams)
+            }
+
+
+            // Update progress bar
+            if (!isNaN(duration)) {
+                 progressBar.value = (currentTime / duration) * 100;
+            } else {
+                progressBar.value = 0; // Reset progress bar if duration is not known
+            }
+
+        });
+
+         // Update duration when metadata is loaded
+         audioPlayer.addEventListener('loadedmetadata', () => {
+             if (!isNaN(audioPlayer.duration)) {
+                 durationEl.textContent = formatTime(audioPlayer.duration);
+                 progressBar.max = 100; // Set max value for percentage
+             } else {
+                 durationEl.textContent = '0:00';
+                 progressBar.max = 100; // Still use 100 for percentage even if duration is unknown
+             }
+         });
+
+
+        // Seek functionality (drag on progress bar)
+        progressBar.addEventListener('input', () => {
+            const duration = audioPlayer.duration;
+             if (!isNaN(duration)) {
+                const seekTime = (progressBar.value / 100) * duration; // Calculate seek time based on percentage
+                audioPlayer.currentTime = seekTime;
+             }
+             // Note: Seeking might not work perfectly with some stream types (like preview URLs)
+        });
+
+        // Volume control
+        volumeBar.addEventListener('input', () => {
+            audioPlayer.volume = volumeBar.value;
+        });
+
+        // Format time (e.g., 3:45)
+        function formatTime(time) {
+            const minutes = Math.floor(time / 60);
+            const seconds = Math.floor(time % 60);
+            const formattedSeconds = seconds < 10 ? `0${seconds}` : seconds;
+            return `${minutes}:${formattedSeconds}`;
+        }
+
+        // --- Load and Play Track ---
+
+         function loadTrack(track) {
+             currentTrack = track;
+
+             // Update UI
+             trackTitleEl.textContent = track.title || 'Unknown Title';
+             trackArtistEl.textContent = `${track.artist || 'Unknown Artist'} - ${track.album || 'Unknown Album'}`;
+             albumArtEl.src = track.artwork || 'https://via.placeholder.com/250?text=No+Artwork';
+
+             // Update background with blurred album art
+             // Use the same image URL as the main album art
+             backgroundOverlayEl.style.backgroundImage = track.artwork ? `url('${track.artwork}')` : 'none';
+             // Ensure blur filter is applied even if background image changes
+             backgroundOverlayEl.style.filter = 'blur(50px)';
+
+
+             // Load audio source
+             // IMPORTANT: Check if the track object has the 'preview' key
+             if (track.preview) {
+                 audioPlayer.src = track.preview;
+                 audioPlayer.load(); // Load the audio
+                 audioPlayer.play() // Start playing automatically
+                     .catch(error => {
+                         console.error("Autoplay failed:", error);
+                         // Autoplay might be blocked by browser policies
+                         // Show a message or button to manually play
+                         alert("Autoplay blocked. Click play button to start music.");
+                         playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                     });
+             } else {
+                 // No audio preview available
+                 audioPlayer.src = ''; // Clear previous source
+                 audioPlayer.load();
+                 isPlaying = false;
+                 playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                 currentTimeEl.textContent = '0:00';
+                 durationEl.textContent = '0:00';
+                 progressBar.value = 0;
+                 console.warn(`No audio preview available for "${track.title}" from ${track.source}.`);
+                 // Optionally display a message to the user
+             }
+
+             // Reset info sections
+             lyricsSection.style.display = 'none';
+             artistInfoSection.style.display = 'none';
+             lyricsContentEl.textContent = 'Fetching lyrics...';
+             artistInfoContentEl.textContent = 'Fetching artist info...';
+
+
+             // --- Fetch Additional Info (Lyrics, Artist Info) ---
+             // You need to pass appropriate IDs to the backend endpoints.
+             // This is a simplified example. Real implementation needs mapping.
+             // For Genius, we might need a Genius-specific ID.
+             // For Shazam, we need a Shazam Artist ID.
+             // The search results from Deezer/Spotify/Last.fm might not have these IDs.
+             // A proper solution involves:
+             // 1. Searching Genius/Shazam/Spotify separately for the track/artist using name/artist.
+             // 2. Storing relevant IDs (Genius ID, Shazam Artist ID, Spotify Track/Artist ID) in the search result object if available.
+             // 3. Passing those specific IDs to the /api/lyrics and /api/artist endpoints.
+
+             // Example placeholder calls - these won't work unless the track object
+             // happens to have properties like `geniusId` and `shazamArtistId` that match the backend requirements.
+             // For this example, we'll make calls using the basic track ID, which might fail.
+             // You would need to enhance server.js to search Genius/Shazam/Spotify by name/artist if needed.
+
+            if (track.id) { // Use a generic ID from the track object
+                 // Try fetching lyrics (might fail if ID is not a valid Genius ID)
+                 fetch(`/api/lyrics/${track.id}?geniusId=${track.geniusId || ''}`) // Pass potential Genius ID
+                     .then(response => {
+                         if (!response.ok) {
+                             // Handle 404 or other errors from the backend proxy
+                             if (response.status === 404) {
+                                 return { lyrics: 'Lyrics not found.' };
+                             }
+                             throw new Error(`HTTP error! status: ${response.status}`);
+                         }
+                         return response.json();
+                     })
+                     .then(data => {
+                         if (data.lyrics) {
+                            // Display lyrics (assuming the backend returns HTML or plain text)
+                            lyricsContentEl.innerHTML = data.lyrics; // Use innerHTML if backend returns HTML
+                            // lyricsContentEl.textContent = data.lyrics; // Use textContent for plain text
+                            lyricsSection.style.display = 'block'; // Show section if lyrics found
+                         } else {
+                             lyricsContentEl.textContent = 'Lyrics not available.';
+                         }
+                     })
+                     .catch(error => {
+                         console.error('Error fetching lyrics:', error);
+                         lyricsContentEl.textContent = 'Could not load lyrics.';
+                     });
+
+                 // Try fetching artist info (might fail if ID is not a valid Shazam/Spotify Artist ID)
+                 fetch(`/api/artist/${track.artistId || track.id}?shazamId=${track.shazamArtistId || ''}`) // Pass potential Shazam ID
+                      .then(response => {
+                         if (!response.ok) {
+                             // Handle 404 or other errors
+                              if (response.status === 404) {
+                                 return { artistInfo: 'Artist info not found.' };
+                              }
+                             throw new Error(`HTTP error! status: ${response.status}`);
+                         }
+                         return response.json();
+                     })
+                     .then(data => {
+                         // Display artist info - depends heavily on the API response structure
+                         // The Shazam endpoint gives "latest release" data, not a full bio.
+                         // Need to adapt this based on what data the backend returns from /api/artist
+                         if (data && Object.keys(data).length > 0) { // Check if data is not empty
+                             // Example: Display latest release title from Shazam
+                             const latestReleaseTitle = data.title || 'Info Available';
+                             artistInfoContentEl.textContent = `Artist Info Fetched (e.g., Latest Release: ${latestReleaseTitle}). Check console for full data.`;
+                             console.log("Full Artist Info Data:", data); // Log full data
+                             artistInfoSection.style.display = 'block'; // Show section
+                         } else {
+                             artistInfoContentEl.textContent = 'Artist info not available.';
+                         }
+
+                     })
+                     .catch(error => {
+                         console.error('Error fetching artist info:', error);
+                         artistInfoContentEl.textContent = 'Could not load artist info.';
+                     });
+
+             }
+         }
+
+
+        // --- Search Functionality ---
+
+         searchQueryInput.addEventListener('input', () => {
+             clearTimeout(searchTimeout); // Clear previous timeout
+             const query = searchQueryInput.value.trim();
+             const selectedApi = apiSourceSelect.value;
+
+             if (query.length > 2) { // Search only if query is at least 3 characters
+                 searchTimeout = setTimeout(() => {
+                     performSearch(query, selectedApi);
+                 }, 300); // Debounce search by 300ms
+             } else {
+                 searchResultsEl.innerHTML = ''; // Clear results if query is too short
+             }
+         });
+
+         apiSourceSelect.addEventListener('change', () => {
+             const query = searchQueryInput.value.trim();
+             const selectedApi = apiSourceSelect.value;
+              // Clear previous results when changing API source
+             searchResultsEl.innerHTML = '';
+             if (query.length > 2) {
+                  performSearch(query, selectedApi); // Perform new search with current query and new API
+             }
+         });
+
+
+         async function performSearch(query, apiSource) {
+             searchResultsEl.innerHTML = '<li>Searching...</li>'; // Show loading indicator
+
+             try {
+                 // Call your backend search endpoint
+                 const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&api=${apiSource}`);
+                 const data = await response.json();
+
+                 searchResultsEl.innerHTML = ''; // Clear loading indicator and previous results
+
+                 if (data.results && data.results.length > 0) {
+                     data.results.forEach(track => {
+                         const li = document.createElement('li');
+                          // Store the full track data on the list item for easy access later
+                         li.dataset.track = JSON.stringify(track);
+
+                         li.innerHTML = `
+                             <img src="${track.artwork || 'https://via.placeholder.com/40?text=?'}" alt="Artwork" class="result-artwork">
+                             <div class="result-info">
+                                 <div>${track.title}</div>
+                                 <small>${track.artist} (${track.source})</small>
+                             </div>
+                         `;
+                         searchResultsEl.appendChild(li);
+
+                         // Add click listener to each result item
+                         li.addEventListener('click', () => {
+                             const selectedTrackData = JSON.parse(li.dataset.track);
+                              // Add the 'preview' field key back to the track object if it was provided by the backend
+                             if (data.audioSourceKey && selectedTrackData[data.audioSourceKey]) {
+                                 selectedTrackData.preview = selectedTrackData[data.audioSourceKey];
+                             } else {
+                                selectedTrackData.preview = null; // Explicitly set to null if no audio source key or preview found
+                             }
+
+                             loadTrack(selectedTrackData); // Load and play the selected track
+                             searchResultsEl.innerHTML = ''; // Clear search results list after selection
+                             searchQueryInput.value = `${selectedTrackData.title} by ${selectedTrackData.artist}`; // Update search input
+                         });
+                     });
+                 } else {
+                     searchResultsEl.innerHTML = '<li>No results found.</li>';
+                 }
+
+             } catch (error) {
+                 console.error('Search failed:', error);
+                 searchResultsEl.innerHTML = '<li>Error during search.</li>';
+             }
+         }
+
+         // Clear results when search input loses focus, after a short delay
+         searchQueryInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                // Check if a result was clicked before clearing
+                // A simple way is to check if an element was clicked and is still in the list
+                 if (!searchResultsEl.contains(document.activeElement)) {
+                     searchResultsEl.innerHTML = '';
+                 }
+            }, 200); // Delay clearing to allow click event on result
+         });
+
+
+         // --- Dark/Light Mode Toggle ---
+         themeToggleBtn.addEventListener('click', () => {
+             document.body.classList.toggle('dark-mode');
+             const isDarkMode = document.body.classList.contains('dark-mode');
+             // Change icon based on mode
+             themeToggleBtn.innerHTML = isDarkMode ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
+
+             // Optional: Save theme preference to localStorage
+             localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+         });
+
+         // Apply saved theme on page load
+         function applySavedTheme() {
+             const savedTheme = localStorage.getItem('theme');
+             if (savedTheme === 'dark') {
+                 document.body.classList.add('dark-mode');
+                 themeToggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
+             } else {
+                 // Default to light or explicit light mode
+                 document.body.classList.remove('dark-mode');
+                 themeToggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
+             }
+         }
+
+         // Initial application of theme
+         applySavedTheme();
+
+
+         // --- Initial setup ---
+         volumeBar.value = audioPlayer.volume; // Sync volume slider with initial audio volume (usually 1)
+
+         // Placeholder functions for Prev/Next (need playlist logic)
+         prevBtn.addEventListener('click', () => { console.log("Previous track (playlist needed)"); });
+         nextBtn.addEventListener('click', () => { console.log("Next track (playlist needed)"); });
+
+
+    </script>
+
 </body>
 </html>
