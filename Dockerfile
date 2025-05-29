@@ -1,23 +1,21 @@
-# Use official Node.js 18 alpine image for small size
-FROM node:18-alpine
+# Use a Node.js image as the base
+FROM node:20-alpine
 
-# Set working directory inside container
-WORKDIR /app
+# Set the working directory in the container
+WORKDIR /usr/src/app
 
-# Install bash for debugging (optional)
-RUN apk add --no-cache bash
-
-# Copy package files first (for caching npm install)
+# Copy package.json and package-lock.json (if using npm)
+# to install dependencies first (improves caching)
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --production
 
-# Copy all other source files
+# Copy the rest of the application code
 COPY . .
 
-# Expose your app port (adjust if needed)
+# Expose the port the app runs on
 EXPOSE 3000
 
-# Start the app
-CMD ["npm", "start"]
+# Command to run the application
+CMD ["node", "app.js"]
