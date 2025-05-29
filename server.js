@@ -9,12 +9,12 @@ const port = process.env.PORT || 3000;
 
 // --- API Keys and Secrets ---
 // IMPORTANT: For production, use environment variables!
-// const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY; // If you still need RapidAPI for Shazam/Deezer infos endpoint
+// const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 // const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 // const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 // Hardcoding for example, use environment variables in production!
-const RAPIDAPI_KEY = '31764eb588msha5540e4e3f93c68p1df091jsn450ff642f9cb'; // Keep if using Shazam/Deezer infos
+const RAPIDAPI_KEY = '31764eb588msha5540e4e3f93c68p1df091jsn450ff642f9cb'; // Used for Spotify Lyrics RapidAPI
 const SPOTIFY_CLIENT_ID = '85564f2ed8ca48d6824f5ec710801fb7';
 const SPOTIFY_CLIENT_SECRET = 'd3491fbd8e0845b1a8e8be5d0f89c252';
 
@@ -58,7 +58,8 @@ async function getSpotifyToken() {
         console.error('Error getting Spotify token:', error.response ? (error.response.data || error.response.status) : error.message);
         spotifyAccessToken = null; // Clear token on error
         spotifyTokenExpiry = 0; // Reset expiry
-        throw new Error('Could not get Spotify access token');
+        // Do NOT throw here, let the calling function handle the error
+        return null; // Indicate failure to get token
     }
 }
 
@@ -75,6 +76,10 @@ app.get('/api/search-tracks', async (req, res) => {
     console.log(`Searching Spotify for: ${query}`);
     try {
         const token = await getSpotifyToken();
+        if (!token) {
+             return res.status(500).json({ error: 'Could not authenticate with Spotify.' });
+        }
+
         const response = await axios.get('https://api.spotify.com/v1/search', {
             params: {
                 q: query,
@@ -91,15 +96,16 @@ app.get('/api/search-tracks', async (req, res) => {
         const resultsWithPreview = spotifyTracks
             .filter(track => track.preview_url) // Only include tracks with a preview
             .map(track => ({
-                id: track.id, // Spotify Track ID
+                id: track.id, // Spotify Track ID - essential for lyrics
                 title: track.name,
                 // Join multiple artists
                 artist: track.artists.map(a => a.name).join(', '),
-                // Get the Spotify Artist ID(s) - useful for fetching artist info
-                artistId: track.artists.length > 0 ? track.artists[0].id : null, // Use the first artist's ID for simplicity
+                 // We still might want artist info later, let's keep artistId for now.
+                 // But the artist *info* endpoint is removed as requested.
+                artistId: track.artists.length > 0 ? track.artists[0].id : null, // Use the first artist's ID for potential future use
                 album: track.album.name,
                 artwork: track.album.images.length > 0 ? track.album.images[0].url : '', // Get largest image, or empty string
-                preview: track.preview_url, // This is the playable URL
+                preview: track.preview_url, // This is the playable URL (30s preview)
                 source: 'spotify' // Indicate source
             }));
 
@@ -116,49 +122,56 @@ app.get('/api/search-tracks', async (req, res) => {
     }
 });
 
-// Endpoint to get Spotify Artist Info
-// This endpoint now correctly uses the Spotify Artist API
-app.get('/api/artist/:spotifyArtistId', async (req, res) => {
-     const spotifyArtistId = req.params.spotifyArtistId;
+// NEW Endpoint: Get Lyrics using the RapidAPI Spotify Lyrics endpoint
+app.get('/api/lyrics-spotify/:spotifyTrackId', async (req, res) => {
+     const spotifyTrackId = req.params.spotifyTrackId;
 
-    if (!spotifyArtistId || spotifyArtistId === 'null') { // Check if ID is provided and not the string 'null'
-         return res.status(400).json({ error: 'Spotify Artist ID is required.' });
+    if (!spotifyTrackId || spotifyTrackId === 'null' || spotifyTrackId === 'undefined') {
+         return res.status(400).json({ error: 'Spotify Track ID is required to fetch lyrics.' });
     }
 
-    console.log(`Fetching artist info for Spotify Artist ID: ${spotifyArtistId}`);
+    console.log(`Fetching lyrics for Spotify Track ID: ${spotifyTrackId}`);
     try {
-        const token = await getSpotifyToken();
-        const response = await axios.get(`https://api.spotify.com/v1/artists/${spotifyArtistId}`, {
+         // Use the RapidAPI endpoint for lyrics
+        const response = await axios.get('https://spotify23.p.rapidapi.com/track_lyrics/', {
+             params: { id: spotifyTrackId },
              headers: {
-                 'Authorization': `Bearer ${token}`
+                 'x-rapidapi-host': 'spotify23.p.rapidapi.com',
+                 'x-rapidapi-key': RAPIDAPI_KEY // Use the RapidAPI key
              }
         });
 
-         if (!response.data || Object.keys(response.data).length === 0) {
-             res.status(404).json({ error: 'Artist info not found or empty response from Spotify.' });
+         if (!response.data || !response.data.lyrics) {
+             res.status(404).json({ lyrics: 'Lyrics not found for this track.' });
          } else {
-            // Return relevant Spotify artist info
-            const artistInfo = {
-                name: response.data.name,
-                genres: response.data.genres.join(', ') || 'N/A',
-                followers: response.data.followers ? response.data.followers.total.toLocaleString() : 'N/A',
-                popularity: response.data.popularity || 'N/A', // 0-100
-                imageUrl: response.data.images.length > 0 ? response.data.images[0].url : '',
-                spotifyUrl: response.data.external_urls?.spotify || '#'
-                // Add more fields as needed
-            };
-            res.json(artistInfo);
+            // The structure might vary, adapt based on actual response
+            // Assuming 'lyrics' object contains 'lines' array
+            const lyricsLines = response.data.lyrics.lines;
+            let formattedLyrics = '';
+            if (lyricsLines && Array.isArray(lyricsLines)) {
+                 formattedLyrics = lyricsLines.map(line => line.words).join('\n');
+            } else {
+                 formattedLyrics = 'Lyrics data format unexpected.';
+                 console.warn("Unexpected lyrics data format:", response.data);
+            }
+
+
+            res.json({ lyrics: formattedLyrics });
          }
 
     } catch (error) {
-        console.error('Error fetching artist info from Spotify:', error.response ? (error.response.data || error.response.status) : error.message);
+        console.error('Error fetching lyrics from RapidAPI Spotify:', error.response ? (error.response.data || error.response.status) : error.message);
          if (error.response && error.response.status === 404) {
-             res.status(404).json({ error: 'Artist info not found for this ID.' });
+             res.status(404).json({ lyrics: 'Lyrics not found via RapidAPI.' });
          } else {
-            res.status(500).json({ error: 'Failed to fetch artist info from Spotify.' });
+            res.status(500).json({ error: 'Failed to fetch lyrics.' });
         }
     }
 });
+
+// Remove the /api/artist/:spotifyArtistId endpoint as requested
+// (Previous implementation was using api.spotify.com/v1/artists)
+
 
 // Deezer Infos Endpoint (kept as an example, not used in player logic)
 app.get('/api/deezer/infos', async (req, res) => {
@@ -167,7 +180,7 @@ app.get('/api/deezer/infos', async (req, res) => {
         const response = await axios.get('https://deezerdevs-deezer.p.rapidapi.com/infos', {
             headers: {
                 'x-rapidapi-host': 'deezerdevs-deezer.p.rapidapi.com',
-                'x-rapidapi-key': RAPIDAPI_KEY
+                'x-rapidapi-key': RAPIDAPI_KEY // Assuming same RapidAPI key
             }
         });
         res.json(response.data);
