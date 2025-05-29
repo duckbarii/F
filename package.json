@@ -18,9 +18,8 @@
     "multer": "^1.4.5-lts.1",
     "node-fetch": "^3.3.2",
     "qrcode-terminal": "^0.12.0",
-    "shazamio": "^1.5.3",
+    "shazamio": "git+https://github.com/someuser/shazamio.git",
     "socket.io": "^4.7.4",
-    "shazamio": "git+https://github.com/someuser/shazamio.git"
     "spotify-web-api-node": "^5.0.2",
     "whatsapp-web.js": "^1.23.0",
     "ytdl-core": "^4.11.4"
