@@ -1,17 +1,22 @@
 {
-  "name": "music-player-backend",
+  "name": "music-player-api-server",
   "version": "1.0.0",
-  "description": "Music player backend with multiple music APIs integration",
+  "description": "Backend server for advanced music player using Last.fm, Spotify, Shazam, Genius and Deezer APIs.",
   "main": "server.js",
+  "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-  "author": "Laes",
+  "author": "nxgdnydm",
   "license": "MIT",
   "dependencies": {
-    "btoa": "^1.2.1",
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "node-fetch": "^2.6.7"
+    "node-fetch": "^3.3.2",
+    "qs": "^6.11.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }
