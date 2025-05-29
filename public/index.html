@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sexy Glassmorphic Music Player</title>
+<style>
+  /* Glassmorphic background & styles */
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    height: 100vh;
+    background: linear-gradient(135deg, #1f1c2c, #928dab);
+    overflow: hidden;
+    color: #eee;
+  }
+  #app {
+    position: relative;
+    max-width: 420px;
+    margin: 40px auto;
+    padding: 20px;
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    background: rgba(255 255 255 / 0.05);
+    box-shadow:
+      0 4px 30px rgba(0, 0, 0, 0.5),
+      inset 0 0 60px rgba(255,255,255,0.1);
+  }
+
+  h1 {
+    text-align: center;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  select, input[type="text"] {
+    width: 100%;
+    border-radius: 12px;
+    border: none;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    background: rgba(255 255 255 / 0.1);
+    color: #eee;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #f72585;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 16px;
+    transition: background 0.3s ease;
+  }
+  button:hover {
+    background: #d81e6a;
+  }
+
+  .track-list {
+    max-height: 250px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+  }
+
+  .track-item {
+    display: flex;
+    align-items: center;
+    background: rgba(255 255 255 / 0.05);
+    margin-bottom: 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    padding: 8px 10px;
+    transition: background 0.3s ease;
+  }
+  .track-item:hover {
+    background: rgba(255 255 255 / 0.15);
+  }
+
+  .track-item img {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    object-fit: cover;
+    margin-right: 12px;
+  }
+
+  .track-info {
+    flex: 1;
+  }
+
+  .track-title {
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .track-artist {
+    font-size: 0.85rem;
+    opacity: 0.8;
+  }
+
+  audio {
+    width: 100%;
+    outline: none;
+    margin-bottom: 16px;
+    border-radius: 12px;
+  }
+
+  .volume-control {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .volume-control input[type=range] {
+    flex: 1;
+    margin-left: 8px;
+  }
+
+  .dark-light-toggle {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .dark-light-toggle button {
+    width: auto;
+    padding: 8px 24px;
+    background: #3a0ca3;
+  }
+
+  /* Background blur based on thumbnail */
+  #bg-blur {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    filter: blur(40px);
+    background-position: center;
+    background-size: cover;
+    z-index: -1;
+    transition: background-image 0.5s ease-in-out;
+  }
+
+</style>
+</head>
+<body>
+  <div id="bg-blur"></div>
+  <div id="app">
+    <h1>Sexy Glassmorphic Music Player</h1>
+    <select id="api-select" title="Select Music Source">
+      <option value="spotify">Spotify</option>
+      <option value="deezer">Deezer</option>
+      <option value="lastfm">Last.fm</option>
+    </select>
+    <input id="search-input" type="text" placeholder="Search tracks..." />
+    <button id="search-btn">Search</button>
+
+    <div class="track-list" id="track-list"></div>
+
+    <audio id="audio-player" controls></audio>
+
+    <div class="volume-control">
+      <label for="volume-range">Volume</label>
+      <input id="volume-range" type="range" min="0" max="1" step="0.01" value="0.5" />
+    </div>
+
+    <div class="dark-light-toggle">
+      <button id="toggle-theme">Toggle Dark/Light Mode</button>
+    </div>
+  </div>
+
+<script>
+  const apiSelect = document.getElementById('api-select');
+  const searchInput = document.getElementById('search-input');
+  const searchBtn = document.getElementById('search-btn');
+  const trackList = document.getElementById('track-list');
+  const audioPlayer = document.getElementById('audio-player');
+  const volumeRange = document.getElementById('volume-range');
+  const bgBlur = document.getElementById('bg-blur');
+  const toggleThemeBtn = document.getElementById('toggle-theme');
+
+  let currentTracks = [];
+  let currentIndex = 0;
+
+  // Play selected track
+  function playTrack(index) {
+    if (index < 0 || index >= currentTracks.length) return;
+    currentIndex = index;
+    const track = currentTracks[index];
+    let audioSrc = '';
+
+    if (apiSelect.value === 'spotify') {
+      audioSrc = track.preview_url || '';
+    } else if (apiSelect.value === 'deezer') {
+      audioSrc = track.preview || '';
+    } else if (apiSelect.value === 'lastfm') {
+      // LastFM does not provide audio preview, fallback to empty
+      audioSrc = '';
+    }
+
+    if (!audioSrc) {
+      alert('Audio preview not available for this track');
+      audioPlayer.pause();
+      audioPlayer.src = '';
+      return;
+    }
+
+    audioPlayer.src = audioSrc;
+    audioPlayer.play();
+
+    setBackgroundImage(track.album ? track.album.images[0].url : track.album.cover_medium || track.image || '');
+
+    highlightSelectedTrack();
+  }
+
+  // Set background blurred image from thumbnail
+  function setBackgroundImage(url) {
+    if (!url) {
+      bgBlur.style.backgroundImage = '';
+      return;
+    }
+    bgBlur.style.backgroundImage = `url(${url})`;
+  }
+
+  // Highlight current track in the list
+  function highlightSelectedTrack() {
+    const items = document.querySelectorAll('.track-item');
+    items.forEach((item, idx) => {
+      item.style.backgroundColor = idx === currentIndex ? 'rgba(255 255 255 / 0.2)' : '';
+    });
+  }
+
+  // Render tracks list
+  function renderTracks(tracks) {
+    currentTracks = tracks;
+    trackList.innerHTML = '';
+    if (!tracks.length) {
+      trackList.innerHTML = '<p>No tracks found.</p>';
+      audioPlayer.src = '';
+      setBackgroundImage('');
+      return;
+    }
+    tracks.forEach((track, i) => {
+      const div = document.createElement('div');
+      div.className = 'track-item';
+      div.innerHTML = `
+        <img src="${track.album ? (track.album.images ? track.album.images[0].url : track.album.cover_medium) : (track.picture || '')}" alt="thumbnail" />
+        <div class="track-info">
+          <div class="track-title">${track.name || track.title}</div>
+          <div class="track-artist">${track.artists ? track.artists.map(a=>a.name).join(', ') : track.artist ? track.artist.name : ''}</div>
+        </div>
+      `;
+      div.onclick = () => playTrack(i);
+      trackList.appendChild(div);
+    });
+  }
+
+  // Fetch tracks from backend
+  async function searchTracks() {
+    const query = searchInput.value.trim();
+    const api = apiSelect.value;
+    if (!query) return alert('Enter search text');
+
+    trackList.innerHTML = '<p>Loading...</p>';
+    audioPlayer.pause();
+    audioPlayer.src = '';
+    setBackgroundImage('');
+
+    try {
+      const res = await fetch(`http://localhost:3000/search?q=${encodeURIComponent(query)}&api=${api}`);
+      const json = await res.json();
+
+      let tracks = [];
+      if (api === 'spotify' && json.data.tracks) {
+        tracks = json.data.tracks.items.map(t => ({
+          name: t.name,
+          preview_url: t.preview_url,
+          album: t.album,
+          artists: t.artists
+        }));
+      } else if (api === 'deezer' && json.data.data) {
+        tracks = json.data.data.map(t => ({
+          title: t.title,
+          preview: t.preview,
+          album: { cover_medium: t.album.cover_medium },
+          artist: { name: t.artist.name },
+          picture: t.album.cover_medium,
+        }));
+      } else if (api === 'lastfm' && json.data.results) {
+        tracks = json.data.results.trackmatches.track.map(t => ({
+          name: t.name,
+          artist: { name: t.artist },
+          // No preview for lastfm
+        }));
+      }
+
+      renderTracks(tracks);
+    } catch (e) {
+      trackList.innerHTML = `<p>Error: ${e.message}</p>`;
+    }
+  }
+
+  searchBtn.onclick = searchTracks;
+  volumeRange.oninput = e => {
+    audioPlayer.volume = e.target.value;
+  };
+
+  toggleThemeBtn.onclick = () => {
+    if (document.body.style.background === 'white') {
+      document.body.style.background = 'linear-gradient(135deg, #1f1c2c, #928dab)';
+      document.body.style.color = '#eee';
+    } else {
+      document.body.style.background = 'white';
+      document.body.style.color = '#222';
+    }
+  };
+
+  // Initialize volume
+  audioPlayer.volume = 0.5;
+</script>
+</body>
+</html>
