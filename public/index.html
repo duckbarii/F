@@ -81,14 +81,19 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
         }
 
-        body.dark-mode .search-container input,
-        body.dark-mode .volume-container input[type="range"],
-        body.dark-mode .progress-container input[type="range"],
-        body.dark-mode .api-select select {
+
+        body.dark-mode .search-container input {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: #eee;
         }
+
+        body.dark-mode .volume-container input[type="range"],
+        body.dark-mode .progress-container input[type="range"] {
+             background: rgba(255, 255, 255, 0.1);
+             border: none; /* Remove border added in light mode for dark mode */
+        }
+
 
         body.dark-mode .search-results li {
             background: rgba(0, 0, 0, 0.1);
@@ -98,6 +103,12 @@
         body.dark-mode .search-results li:hover {
             background: rgba(0, 0, 0, 0.2);
         }
+
+         body.dark-mode .search-results {
+             background: rgba(0, 0, 0, 0.1);
+             border: 1px solid rgba(50, 50, 50, 0.5);
+         }
+
 
         /* Album Art */
         .album-art {
@@ -318,6 +329,9 @@
              border: 1px solid rgba(255, 255, 255, 0.2);
              backdrop-filter: blur(5px);
              -webkit-backdrop-filter: blur(5px);
+             position: absolute; /* Position above other elements */
+             width: 100%;
+             z-index: 10; /* Ensure it's on top */
         }
 
          .search-results li {
@@ -358,40 +372,14 @@
              font-size: 0.8em;
              opacity: 0.8;
           }
-
-         /* API Selection */
-         .api-select {
-             width: 100%;
-             margin-bottom: 20px;
-         }
-
-         .api-select label {
-             display: block;
-             margin-bottom: 5px;
-             font-weight: 600;
-             opacity: 0.9;
-         }
-
-         .api-select select {
-             width: 100%;
-             padding: 10px;
-             border: 1px solid rgba(255, 255, 255, 0.3);
-             border-radius: 8px;
-             background: rgba(255, 255, 255, 0.15);
-             color: #fff;
-             font-size: 1em;
-             outline: none;
-             cursor: pointer;
-             appearance: none; /* Remove default arrow */
-             -webkit-appearance: none;
-             background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ffffff%22%20d%3D%22M287%2C114.7L159.7%2C242.9c-3.2%2C3.2-7%2C4.6-11.1%2C4.8c-4%2C0.1-7.9-1.3-11.1-4.4L5.4%2C114.7c-3.2-3.2-4.5-7.1-4.4-11.1c0.1-4%2C1.5-7.8%2C4.7-10.9l19.8-20c3.2-3.2%2C7.1-4.6%2C11.1-4.4c4%2C0.1%2C7.9%2C1.5%2C11.1%2C4.7l94.6%2C94.6l94.6-94.6c3.2-3.2%2C7.1-4.5%2C11.1-4.4c4%2C0.1%2C7.9%2C1.4%2C11.1%2C4.6l19.8%2C20c3.2%2C3.1%2C4.6%2C7%2C4.7%2C11c0%2C4.1-1.3%2C7.9-4.5%2C11.2L287%2C114.7z%22%2F%3E%3C%2Fsvg%3E'); /* Custom arrow */
-            background-repeat: no-repeat;
-            background-position: right 10px top 50%;
-            background-size: 12px auto;
+         /* Hide search results by default or when empty */
+         .search-results:empty {
+             display: none;
          }
 
 
-        /* Lyrics/Artist Info */
+        /* Artist Info */
+        /* Kept this section, removed Lyrics */
         .info-section {
             width: 100%;
             margin-top: 20px;
@@ -537,52 +525,40 @@
 
         <div class="track-info">
             <h2 id="trackTitle">Not Playing</h2>
-            <p id="trackArtist">Select a song to play</p>
+            <p id="trackArtist">Search and select a song</p>
         </div>
 
         <div class="controls">
-            <button class="control-button" id="prevBtn"><i class="fas fa-backward"></i></button>
-            <button class="control-button play-pause" id="playPauseBtn"><i class="fas fa-play"></i></button>
-            <button class="control-button" id="nextBtn"><i class="fas fa-forward"></i></button>
+            <button class="control-button" id="prevBtn" title="Previous"><i class="fas fa-backward"></i></button>
+            <button class="control-button play-pause" id="playPauseBtn" title="Play/Pause"><i class="fas fa-play"></i></button>
+            <button class="control-button" id="nextBtn" title="Next"><i class="fas fa-forward"></i></button>
         </div>
 
         <div class="progress-container">
             <span class="current-time" id="currentTime">0:00</span>
-            <input type="range" id="progressBar" value="0" step="0.1" min="0">
+            <input type="range" id="progressBar" value="0" step="0.1" min="0" title="Progress Bar">
             <span class="duration" id="duration">0:00</span>
         </div>
 
          <div class="volume-container">
              <i class="fas fa-volume-down"></i>
-             <input type="range" id="volumeBar" value="1" step="0.01" min="0" max="1">
+             <input type="range" id="volumeBar" value="1" step="0.01" min="0" max="1" title="Volume Control">
              <i class="fas fa-volume-up"></i>
          </div>
 
-        <div class="api-select">
-            <label for="apiSource">Search from:</label>
-            <select id="apiSource">
-                <option value="deezer">Deezer (Previews)</option>
-                <option value="spotify">Spotify (Previews)</option>
-                <option value="lastfm">Last.fm (Metadata Only)</option>
-            </select>
-        </div>
+        <!-- API Select dropdown removed -->
 
         <div class="search-container">
-            <input type="text" id="searchQuery" placeholder="Search for songs or artists...">
+            <input type="text" id="searchQuery" placeholder="Search for songs or artists on Last.fm..." title="Search Input">
             <ul class="search-results" id="searchResults">
-                <!-- Search results will be appended here -->
+                <!-- Last.fm Search results will be appended here -->
             </ul>
         </div>
 
-         <!-- Placeholder sections for additional info -->
-         <div class="info-section" id="lyricsSection">
-             <h3>Lyrics</h3>
-             <pre id="lyricsContent">Search for a track and click on it to see if lyrics are available...</pre>
-         </div>
-
+         <!-- Artist Info Section (Lyrics section removed) -->
          <div class="info-section" id="artistInfoSection">
              <h3>Artist Info</h3>
-             <pre id="artistInfoContent">Search for a track and click on it to see artist details if available...</pre>
+             <pre id="artistInfoContent">Select a track to see artist details if available...</pre>
          </div>
 
     </div>
@@ -606,25 +582,29 @@
         const backgroundOverlayEl = document.querySelector('.background-overlay');
         const searchQueryInput = document.getElementById('searchQuery');
         const searchResultsEl = document.getElementById('searchResults');
-        const apiSourceSelect = document.getElementById('apiSource');
-        const themeToggleBtn = document.getElementById('themeToggleBtn');
-        const lyricsSection = document.getElementById('lyricsSection');
-        const lyricsContentEl = document.getElementById('lyricsContent');
+        // API select element removed
+        // Lyrics section removed
         const artistInfoSection = document.getElementById('artistInfoSection');
         const artistInfoContentEl = document.getElementById('artistInfoContent');
 
 
-        let currentTrack = null; // Store info about the currently loaded track
+        let currentTrack = null; // Store info about the currently loaded playable track
         let isPlaying = false;
         let searchTimeout = null; // For debouncing search input
 
         // --- Audio Player Controls ---
 
         function togglePlayPause() {
+            if (!audioPlayer.src) {
+                 console.log("No track loaded.");
+                 return; // Do nothing if no source is set
+            }
+
             if (audioPlayer.paused || audioPlayer.ended) {
-                if (audioPlayer.src) { // Check if a source is loaded
-                     audioPlayer.play();
-                }
+                 audioPlayer.play().catch(error => {
+                     console.error("Playback failed:", error);
+                      alert("Failed to play track. Make sure your browser allows autoplay or click play again.");
+                 });
             } else {
                 audioPlayer.pause();
             }
@@ -645,7 +625,7 @@
         audioPlayer.addEventListener('ended', () => {
             isPlaying = false;
             playPauseBtn.innerHTML = '<i class="fas fa-play"></i>'; // Change icon to play
-            currentTimeEl.textContent = '0:00'; // Reset time
+            currentTimeEl.textContent = '0:00'; // Reset time display
             progressBar.value = 0; // Reset progress bar
              // Optional: Auto-play next track if a playlist exists
         });
@@ -657,38 +637,38 @@
 
             // Update time displays
             currentTimeEl.textContent = formatTime(currentTime);
-            if (!isNaN(duration)) { // Check if duration is a valid number
+
+            // Update progress bar (only if duration is available)
+            if (!isNaN(duration) && duration > 0) {
                 durationEl.textContent = formatTime(duration);
+                progressBar.value = (currentTime / duration) * 100;
             } else {
-                 durationEl.textContent = '0:00'; // Display 0:00 if duration is not available (e.g., for streams)
-            }
-
-
-            // Update progress bar
-            if (!isNaN(duration)) {
-                 progressBar.value = (currentTime / duration) * 100;
-            } else {
-                progressBar.value = 0; // Reset progress bar if duration is not known
+                 // Handle cases where duration is not available (e.g., some streams)
+                 durationEl.textContent = '--:--'; // Or keep 0:00
+                 progressBar.value = 0; // Cannot show progress without duration
             }
 
         });
 
          // Update duration when metadata is loaded
          audioPlayer.addEventListener('loadedmetadata', () => {
-             if (!isNaN(audioPlayer.duration)) {
+             if (!isNaN(audioPlayer.duration) && audioPlayer.duration > 0) {
                  durationEl.textContent = formatTime(audioPlayer.duration);
                  progressBar.max = 100; // Set max value for percentage
              } else {
-                 durationEl.textContent = '0:00';
-                 progressBar.max = 100; // Still use 100 for percentage even if duration is unknown
+                 durationEl.textContent = '--:--'; // Show unknown duration
+                 progressBar.max = 100; // Still use 100 for percentage if we ever get duration later
              }
+              // Reset current time on new track load
+             currentTimeEl.textContent = '0:00';
+             progressBar.value = 0;
          });
 
 
         // Seek functionality (drag on progress bar)
         progressBar.addEventListener('input', () => {
             const duration = audioPlayer.duration;
-             if (!isNaN(duration)) {
+             if (!isNaN(duration) && duration > 0) {
                 const seekTime = (progressBar.value / 100) * duration; // Calculate seek time based on percentage
                 audioPlayer.currentTime = seekTime;
              }
@@ -708,169 +688,196 @@
             return `${minutes}:${formattedSeconds}`;
         }
 
-        // --- Load and Play Track ---
+        // --- Load and Play Track (gets playable data from backend) ---
 
-         function loadTrack(track) {
-             currentTrack = track;
+         async function loadAndPlayTrack(trackMetadata) {
+             // trackMetadata comes from the Last.fm search result (title, artist, artwork, etc.)
+             console.log("Attempting to load playable track for:", trackMetadata);
 
-             // Update UI
-             trackTitleEl.textContent = track.title || 'Unknown Title';
-             trackArtistEl.textContent = `${track.artist || 'Unknown Artist'} - ${track.album || 'Unknown Album'}`;
-             albumArtEl.src = track.artwork || 'https://via.placeholder.com/250?text=No+Artwork';
-
-             // Update background with blurred album art
-             // Use the same image URL as the main album art
-             backgroundOverlayEl.style.backgroundImage = track.artwork ? `url('${track.artwork}')` : 'none';
-             // Ensure blur filter is applied even if background image changes
+             // Update UI with initial metadata while fetching playable URL
+             trackTitleEl.textContent = trackMetadata.title || 'Unknown Title';
+             trackArtistEl.textContent = `${trackMetadata.artist || 'Unknown Artist'} - Searching...`;
+             albumArtEl.src = trackMetadata.artwork || 'https://via.placeholder.com/250?text=No+Artwork';
+             backgroundOverlayEl.style.backgroundImage = trackMetadata.artwork ? `url('${trackMetadata.artwork}')` : 'none';
              backgroundOverlayEl.style.filter = 'blur(50px)';
 
+             // Reset player state
+             audioPlayer.src = ''; // Clear previous source
+             audioPlayer.load();
+             isPlaying = false;
+             playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+             currentTimeEl.textContent = '0:00';
+             durationEl.textContent = '0:00';
+             progressBar.value = 0;
 
-             // Load audio source
-             // IMPORTANT: Check if the track object has the 'preview' key
-             if (track.preview) {
-                 audioPlayer.src = track.preview;
-                 audioPlayer.load(); // Load the audio
-                 audioPlayer.play() // Start playing automatically
-                     .catch(error => {
-                         console.error("Autoplay failed:", error);
-                         // Autoplay might be blocked by browser policies
-                         // Show a message or button to manually play
-                         alert("Autoplay blocked. Click play button to start music.");
-                         playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-                     });
-             } else {
-                 // No audio preview available
-                 audioPlayer.src = ''; // Clear previous source
-                 audioPlayer.load();
-                 isPlaying = false;
-                 playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
-                 currentTimeEl.textContent = '0:00';
-                 durationEl.textContent = '0:00';
-                 progressBar.value = 0;
-                 console.warn(`No audio preview available for "${track.title}" from ${track.source}.`);
-                 // Optionally display a message to the user
-             }
-
-             // Reset info sections
-             lyricsSection.style.display = 'none';
+             // Reset info sections (lyrics removed)
              artistInfoSection.style.display = 'none';
-             lyricsContentEl.textContent = 'Fetching lyrics...';
-             artistInfoContentEl.textContent = 'Fetching artist info...';
+             artistInfoContentEl.textContent = 'Fetching artist info...'; // Reset text
 
 
-             // --- Fetch Additional Info (Lyrics, Artist Info) ---
-             // You need to pass appropriate IDs to the backend endpoints.
-             // This is a simplified example. Real implementation needs mapping.
-             // For Genius, we might need a Genius-specific ID.
-             // For Shazam, we need a Shazam Artist ID.
-             // The search results from Deezer/Spotify/Last.fm might not have these IDs.
-             // A proper solution involves:
-             // 1. Searching Genius/Shazam/Spotify separately for the track/artist using name/artist.
-             // 2. Storing relevant IDs (Genius ID, Shazam Artist ID, Spotify Track/Artist ID) in the search result object if available.
-             // 3. Passing those specific IDs to the /api/lyrics and /api/artist endpoints.
+             try {
+                 // Call the new backend endpoint to get playable track details (incl. URL)
+                 const response = await fetch(`/api/get-playable-track?title=${encodeURIComponent(trackMetadata.title)}&artist=${encodeURIComponent(trackMetadata.artist)}`);
 
-             // Example placeholder calls - these won't work unless the track object
-             // happens to have properties like `geniusId` and `shazamArtistId` that match the backend requirements.
-             // For this example, we'll make calls using the basic track ID, which might fail.
-             // You would need to enhance server.js to search Genius/Shazam/Spotify by name/artist if needed.
+                 if (!response.ok) {
+                      // Handle errors from the backend (e.g., 404 if no preview found)
+                      if (response.status === 404) {
+                         trackArtistEl.textContent = `${trackMetadata.artist} - No playable preview found`;
+                         console.warn(`No playable preview found for "${trackMetadata.title}" by ${trackMetadata.artist}`);
+                         return; // Stop here if no playable track
+                      }
+                      throw new Error(`Failed to get playable track: ${response.status}`);
+                 }
 
-            if (track.id) { // Use a generic ID from the track object
-                 // Try fetching lyrics (might fail if ID is not a valid Genius ID)
-                 fetch(`/api/lyrics/${track.id}?geniusId=${track.geniusId || ''}`) // Pass potential Genius ID
-                     .then(response => {
-                         if (!response.ok) {
-                             // Handle 404 or other errors from the backend proxy
-                             if (response.status === 404) {
-                                 return { lyrics: 'Lyrics not found.' };
+                 const playableTrackData = await response.json();
+                 console.log("Received playable track data:", playableTrackData);
+
+                 if (playableTrackData.preview) {
+                     currentTrack = playableTrackData; // Store the full playable track data
+
+                     // Update UI with potentially better info from Spotify/Deezer
+                     trackTitleEl.textContent = playableTrackData.title;
+                     trackArtistEl.textContent = `${playableTrackData.artist} - ${playableTrackData.album || ''} (${playableTrackData.source})`;
+                     albumArtEl.src = playableTrackData.artwork || trackMetadata.artwork || 'https://via.placeholder.com/250?text=No+Artwork';
+                     backgroundOverlayEl.style.backgroundImage = playableTrackData.artwork ? `url('${playableTrackData.artwork}')` : (trackMetadata.artwork ? `url('${trackMetadata.artwork}')` : 'none');
+                     backgroundOverlayEl.style.filter = 'blur(50px)';
+
+
+                     // Load and play the audio preview
+                     audioPlayer.src = playableTrackData.preview;
+                     audioPlayer.load(); // Load the audio
+                     audioPlayer.play()
+                         .catch(error => {
+                             console.error("Autoplay failed:", error);
+                             // Autoplay might be blocked by browser policies
+                             alert("Autoplay blocked. Click the play button to start music.");
+                             playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                         });
+
+                     // --- Fetch Artist Info (if artist ID is available or can be found) ---
+                     // This is tricky as we need a Shazam Artist ID.
+                     // The 'playableTrackData' might have an artist ID from Spotify/Deezer,
+                     // but that's likely NOT a Shazam ID.
+                     // A robust solution needs a backend call to search Shazam/Spotify for the artist by name
+                     // and get the correct ID.
+                     // For now, we'll make a placeholder call using the artist name or a generic ID,
+                     // which might fail unless the backend is updated to handle name-based lookup or
+                     // the search results somehow included a Shazam ID.
+
+                     // Example call (might fail if artistId/shazamId is not a valid Shazam ID):
+                     // Using the artist name as a potential identifier for a backend lookup if the backend supports it
+                     const artistNameForLookup = encodeURIComponent(playableTrackData.artist);
+                     // If the playableTrackData had a specific artist ID from Spotify/Deezer, you could pass that:
+                     // const spotifyArtistId = playableTrackData.artistId;
+                     // If the *original* Last.fm track had an MBID that Shazam *might* recognize, pass that:
+                     // const lastfmMbid = trackMetadata.id; // Caution: this is not a Shazam ID
+
+
+                     // Let's assume for now the backend /api/artist endpoint *might* handle a name lookup
+                     // or that we might pass an ID IF we got one.
+                     // A simple approach is to just try calling with the artist name or a placeholder ID:
+                     // NOTE: The backend /api/artist endpoint *currently* expects an ID in the URL path.
+                     // We need to either change the backend endpoint to accept name or find an ID first.
+                     // Given the backend expects an ID, let's try passing the track ID from the playable data,
+                     // *hoping* the backend is smart enough to use it or that it might coincidentally work
+                     // with *some* APIs the backend queries (like Spotify Artist API if you add that).
+                     // Let's pass the artist name and hope the backend can use it or we enhance the backend later.
+                     // Changing frontend call to pass artist name as a query param, assuming backend endpoint expects ID in path.
+                     // The backend currently expects /api/artist/:artistId
+                     // This part needs alignment. Let's default to trying a generic ID or require a Shazam ID.
+                     // Let's stick to the backend expecting an ID and hope the source API provides something usable OR requires a backend lookup by name.
+                     // The safest is to explicitly require a Shazam ID in the backend call and handle if we don't have one.
+                     // Let's modify the frontend call to pass the artist name as a query parameter for a *potential* future backend lookup modification,
+                     // while the backend currently expects an ID in the path. This requires a backend change to be truly useful.
+                     // For now, let's just call the backend endpoint with a placeholder or the artist name if the backend can handle it.
+                     // Simpler: call with the artist name in a query parameter, and if the backend endpoint can't use it (because it expects ID in path), it will fail gracefully.
+
+                      // Call the backend endpoint, passing the artist name. Backend /api/artist/:artistId is designed for ID.
+                      // We need a way to get a Shazam/Spotify Artist ID first.
+                      // Let's just call the backend with the playable track's artist name encoded as a query param for now,
+                      // but know that the backend endpoint /api/artist/:artistId needs modification to use this, OR we need a new backend endpoint.
+                      // Sticking to the backend as written: it expects an ID in the path. We don't have a Shazam ID easily.
+                      // Let's skip the artist info fetch for now or make it clear it's WIP without a proper ID.
+                      // OK, let's call the backend endpoint but pass the artist name in the *query string* and log a warning that backend expects ID in path.
+                      // This relies on *future* backend changes or ignores the current backend endpoint structure.
+                      // A better way is to *not* call /api/artist/:artistId unless we actually have a potential ID.
+                      // Let's use the ID from the *playableTrackData* as the :artistId path parameter. It's not a Shazam ID, but the backend code might handle different types or it's a placeholder call anyway.
+
+                     const idForArtistLookup = playableTrackData.id || playableTrackData.artist; // Using track ID or artist name as a fallback ID
+
+                     fetch(`/api/artist/${encodeURIComponent(idForArtistLookup)}`) // Pass some identifier
+                          .then(response => {
+                             if (!response.ok) {
+                                  if (response.status === 404) {
+                                     return { artistInfo: 'Artist info not found for this track/artist identifier.' };
+                                  }
+                                 throw new Error(`HTTP error fetching artist info: ${response.status}`);
                              }
-                             throw new Error(`HTTP error! status: ${response.status}`);
-                         }
-                         return response.json();
-                     })
-                     .then(data => {
-                         if (data.lyrics) {
-                            // Display lyrics (assuming the backend returns HTML or plain text)
-                            lyricsContentEl.innerHTML = data.lyrics; // Use innerHTML if backend returns HTML
-                            // lyricsContentEl.textContent = data.lyrics; // Use textContent for plain text
-                            lyricsSection.style.display = 'block'; // Show section if lyrics found
-                         } else {
-                             lyricsContentEl.textContent = 'Lyrics not available.';
-                         }
-                     })
-                     .catch(error => {
-                         console.error('Error fetching lyrics:', error);
-                         lyricsContentEl.textContent = 'Could not load lyrics.';
-                     });
+                             return response.json();
+                         })
+                         .then(data => {
+                             if (data && Object.keys(data).length > 0 && data.artistInfo !== 'Artist info not found...') { // Check if data is not empty and not our 404 message
+                                 // Display artist info - this part depends heavily on the API response structure
+                                 // Shazam latest release includes title, artwork etc.
+                                 let infoText = 'Artist Info: ';
+                                 if (data.title) infoText += `Latest Release: "${data.title}"`;
+                                 // Add more fields if available from the response...
+                                 // For example, if the backend hit a Spotify Artist API, you might get genres, followers etc.
+                                 artistInfoContentEl.textContent = infoText.length > 15 ? infoText : JSON.stringify(data, null, 2); // Display parsed info or raw JSON
+                                 console.log("Full Artist Info Data:", data); // Log full data
+                                 artistInfoSection.style.display = 'block'; // Show section
+                             } else {
+                                 artistInfoContentEl.textContent = 'Artist info not available.';
+                             }
 
-                 // Try fetching artist info (might fail if ID is not a valid Shazam/Spotify Artist ID)
-                 fetch(`/api/artist/${track.artistId || track.id}?shazamId=${track.shazamArtistId || ''}`) // Pass potential Shazam ID
-                      .then(response => {
-                         if (!response.ok) {
-                             // Handle 404 or other errors
-                              if (response.status === 404) {
-                                 return { artistInfo: 'Artist info not found.' };
-                              }
-                             throw new Error(`HTTP error! status: ${response.status}`);
-                         }
-                         return response.json();
-                     })
-                     .then(data => {
-                         // Display artist info - depends heavily on the API response structure
-                         // The Shazam endpoint gives "latest release" data, not a full bio.
-                         // Need to adapt this based on what data the backend returns from /api/artist
-                         if (data && Object.keys(data).length > 0) { // Check if data is not empty
-                             // Example: Display latest release title from Shazam
-                             const latestReleaseTitle = data.title || 'Info Available';
-                             artistInfoContentEl.textContent = `Artist Info Fetched (e.g., Latest Release: ${latestReleaseTitle}). Check console for full data.`;
-                             console.log("Full Artist Info Data:", data); // Log full data
-                             artistInfoSection.style.display = 'block'; // Show section
-                         } else {
-                             artistInfoContentEl.textContent = 'Artist info not available.';
-                         }
+                         })
+                         .catch(error => {
+                             console.error('Error fetching artist info:', error);
+                             artistInfoContentEl.textContent = 'Could not load artist info.';
+                         });
 
-                     })
-                     .catch(error => {
-                         console.error('Error fetching artist info:', error);
-                         artistInfoContentEl.textContent = 'Could not load artist info.';
-                     });
 
+                 } else {
+                      // This case should ideally be caught by the 404 from the backend, but good to double-check
+                      trackArtistEl.textContent = `${trackMetadata.artist} - No playable preview found`;
+                     console.warn(`Backend did not return a preview URL for "${trackMetadata.title}" by ${trackMetadata.artist}`);
+                 }
+
+
+             } catch (error) {
+                 console.error('Error loading playable track:', error);
+                 trackArtistEl.textContent = `${trackMetadata.artist} - Error loading track`;
+                 alert('An error occurred while trying to load the track.');
              }
+
+              // Clear search results after a selection is made
+             searchResultsEl.innerHTML = '';
+              searchQueryInput.value = `${trackMetadata.title} by ${trackMetadata.artist}`; // Update search input text
          }
 
 
-        // --- Search Functionality ---
+        // --- Search Functionality (Last.fm only) ---
 
          searchQueryInput.addEventListener('input', () => {
              clearTimeout(searchTimeout); // Clear previous timeout
              const query = searchQueryInput.value.trim();
-             const selectedApi = apiSourceSelect.value;
 
              if (query.length > 2) { // Search only if query is at least 3 characters
                  searchTimeout = setTimeout(() => {
-                     performSearch(query, selectedApi);
+                     performLastfmSearch(query);
                  }, 300); // Debounce search by 300ms
              } else {
                  searchResultsEl.innerHTML = ''; // Clear results if query is too short
              }
          });
 
-         apiSourceSelect.addEventListener('change', () => {
-             const query = searchQueryInput.value.trim();
-             const selectedApi = apiSourceSelect.value;
-              // Clear previous results when changing API source
-             searchResultsEl.innerHTML = '';
-             if (query.length > 2) {
-                  performSearch(query, selectedApi); // Perform new search with current query and new API
-             }
-         });
-
-
-         async function performSearch(query, apiSource) {
-             searchResultsEl.innerHTML = '<li>Searching...</li>'; // Show loading indicator
+         async function performLastfmSearch(query) {
+             searchResultsEl.innerHTML = '<li>Searching Last.fm...</li>'; // Show loading indicator
+              searchResultsEl.style.display = 'block'; // Ensure results list is visible
 
              try {
-                 // Call your backend search endpoint
-                 const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&api=${apiSource}`);
+                 // Call your backend search endpoint (now Last.fm only)
+                 const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
                  const data = await response.json();
 
                  searchResultsEl.innerHTML = ''; // Clear loading indicator and previous results
@@ -879,51 +886,51 @@
                      data.results.forEach(track => {
                          const li = document.createElement('li');
                           // Store the full track data on the list item for easy access later
+                          // This data is metadata from Last.fm
                          li.dataset.track = JSON.stringify(track);
 
                          li.innerHTML = `
                              <img src="${track.artwork || 'https://via.placeholder.com/40?text=?'}" alt="Artwork" class="result-artwork">
                              <div class="result-info">
                                  <div>${track.title}</div>
-                                 <small>${track.artist} (${track.source})</small>
+                                 <small>${track.artist}</small>
                              </div>
                          `;
                          searchResultsEl.appendChild(li);
 
                          // Add click listener to each result item
                          li.addEventListener('click', () => {
-                             const selectedTrackData = JSON.parse(li.dataset.track);
-                              // Add the 'preview' field key back to the track object if it was provided by the backend
-                             if (data.audioSourceKey && selectedTrackData[data.audioSourceKey]) {
-                                 selectedTrackData.preview = selectedTrackData[data.audioSourceKey];
-                             } else {
-                                selectedTrackData.preview = null; // Explicitly set to null if no audio source key or preview found
-                             }
-
-                             loadTrack(selectedTrackData); // Load and play the selected track
-                             searchResultsEl.innerHTML = ''; // Clear search results list after selection
-                             searchQueryInput.value = `${selectedTrackData.title} by ${selectedTrackData.artist}`; // Update search input
+                             const selectedTrackMetadata = JSON.parse(li.dataset.track);
+                             loadAndPlayTrack(selectedTrackMetadata); // Load and play the selected track
+                              // Search results will be cleared inside loadAndPlayTrack
                          });
                      });
                  } else {
-                     searchResultsEl.innerHTML = '<li>No results found.</li>';
+                     searchResultsEl.innerHTML = '<li>No results found on Last.fm.</li>';
                  }
 
              } catch (error) {
-                 console.error('Search failed:', error);
+                 console.error('Last.fm search failed:', error);
                  searchResultsEl.innerHTML = '<li>Error during search.</li>';
              }
          }
 
          // Clear results when search input loses focus, after a short delay
+         // Needs adjustment to prevent clearing when clicking a result item
          searchQueryInput.addEventListener('blur', () => {
-            setTimeout(() => {
-                // Check if a result was clicked before clearing
-                // A simple way is to check if an element was clicked and is still in the list
+             // Use a small delay to allow click event on search result to fire first
+             setTimeout(() => {
+                 // Check if the active element is within the search results list
                  if (!searchResultsEl.contains(document.activeElement)) {
-                     searchResultsEl.innerHTML = '';
+                     searchResultsEl.innerHTML = ''; // Clear results
                  }
-            }, 200); // Delay clearing to allow click event on result
+             }, 200); // 200ms delay
+         });
+          // Keep search results visible if input is focused and not empty
+         searchQueryInput.addEventListener('focus', () => {
+              if (searchResultsEl.children.length > 0 && searchResultsEl.firstElementChild.textContent !== 'Searching Last.fm...' && searchResultsEl.firstElementChild.textContent !== 'No results found on Last.fm.' && searchResultsEl.firstElementChild.textContent !== 'Error during search.') {
+                  searchResultsEl.style.display = 'block';
+              }
          });
 
 
