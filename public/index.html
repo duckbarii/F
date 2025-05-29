@@ -1,37 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>YouTube Music Player</title>
+  <meta charset="UTF-8">
+  <title>YouTube Music Player 🎶</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      background: #0d0d0d;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .container {
+      background: rgba(255,255,255,0.05);
+      padding: 30px;
+      border-radius: 20px;
+      text-align: center;
+      width: 90%;
+      max-width: 400px;
+      backdrop-filter: blur(6px);
+    }
+    input {
+      padding: 10px;
+      width: 100%;
+      margin-bottom: 15px;
+      border: none;
+      border-radius: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #1db954;
+      border: none;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    audio {
+      width: 100%;
+      margin-top: 20px;
+    }
+    img {
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
-  <h1>YouTube Music Player 🎶</h1>
-  <input id="search" placeholder="Search for music..." />
-  <button onclick="searchSongs()">Search</button>
-  <ul id="results"></ul>
-  <audio id="player" controls></audio>
+  <div class="container">
+    <h2>🎧 YT Music Stream</h2>
+    <input type="text" id="query" placeholder="Search for a song...">
+    <button onclick="play()">Play</button>
+    <h3 id="title"></h3>
+    <img id="thumb" style="display:none" />
+    <audio id="player" controls></audio>
+  </div>
 
   <script>
-    async function searchSongs() {
-      const query = document.getElementById("search").value;
-      const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      const results = document.getElementById("results");
-      results.innerHTML = "";
-      data.forEach(song => {
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <img src="${song.thumbnail}" />
-          ${song.title}
-          <button onclick="play('${song.videoId}')">Play</button>
-        `;
-        results.appendChild(li);
-      });
-    }
+    async function play() {
+      const query = document.getElementById('query').value;
+      const player = document.getElementById('player');
+      const title = document.getElementById('title');
+      const thumb = document.getElementById('thumb');
 
-    function play(videoId) {
-      const player = document.getElementById("player");
-      player.src = `/stream?id=${videoId}`;
-      player.play();
+      title.textContent = "Searching...";
+      player.src = "";
+      thumb.style.display = "none";
+
+      try {
+        const searchRes = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await searchRes.json();
+
+        title.textContent = data.title;
+        thumb.src = data.thumbnail;
+        thumb.style.display = "block";
+
+        const streamRes = await fetch(`/api/stream?id=${data.videoId}`);
+        const streamData = await streamRes.json();
+
+        player.src = streamData.url;
+        player.play();
+      } catch (err) {
+        title.textContent = "Error playing track!";
+      }
     }
   </script>
 </body>
