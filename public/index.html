@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sexy Glassmorphic Music Player</title>
+    <title>Glassmorphic Music Player</title>
     <!-- Add a nice font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <!-- Add vector icons (Font Awesome) -->
@@ -383,7 +383,8 @@
          }
 
 
-        /* Artist Info */
+        /* Lyrics Section */
+        /* Kept this section, removed Artist Info */
         .info-section {
             width: 100%;
             margin-top: 20px;
@@ -415,6 +416,7 @@
              font-size: 0.9em;
              line-height: 1.6;
              opacity: 0.8;
+             margin: 0; /* Remove default pre margin */
          }
 
          body.dark-mode .info-section {
@@ -557,10 +559,10 @@
             </ul>
         </div>
 
-         <!-- Artist Info Section -->
-         <div class="info-section" id="artistInfoSection">
-             <h3>Artist Info</h3>
-             <pre id="artistInfoContent">Select a track to see artist details if available...</pre>
+         <!-- Lyrics Section (Artist Info section removed) -->
+         <div class="info-section" id="lyricsSection">
+             <h3>Lyrics</h3>
+             <pre id="lyricsContent">Select a track to see lyrics if available...</pre>
          </div>
 
     </div>
@@ -585,8 +587,9 @@
         const searchQueryInput = document.getElementById('searchQuery');
         const searchResultsEl = document.getElementById('searchResults');
         const themeToggleBtn = document.getElementById('themeToggleBtn');
-        const artistInfoSection = document.getElementById('artistInfoSection');
-        const artistInfoContentEl = document.getElementById('artistInfoContent');
+        // Artist Info elements removed
+        const lyricsSection = document.getElementById('lyricsSection'); // Lyrics section added back
+        const lyricsContentEl = document.getElementById('lyricsContent'); // Lyrics content element
 
 
         let currentTrack = null; // Store info about the currently loaded playable track
@@ -640,36 +643,34 @@
             // Update time displays
             currentTimeEl.textContent = formatTime(currentTime);
 
-            // Update progress bar (only if duration is available)
-            if (!isNaN(duration) && duration > 0) {
+            // Update progress bar (only if duration is available and > 0)
+             if (!isNaN(duration) && duration > 0) {
                 durationEl.textContent = formatTime(duration);
                 progressBar.value = (currentTime / duration) * 100;
             } else {
                  // Handle cases where duration is not available (e.g., some streams, like 30s previews)
-                 durationEl.textContent = '0:30'; // Spotify previews are 30s
-                 // If duration is NaN or 0, progress bar cannot accurately reflect time
-                 // We can still update it based on elapsed time if we know the expected length (e.g., 30s)
-                 const expectedDuration = 30; // Spotify preview length
-                 if (!isNaN(currentTime) && currentTime <= expectedDuration && expectedDuration > 0) {
+                 durationEl.textContent = '0:30'; // Spotify previews are typically 30s
+                 // You can still update the progress bar visually based on estimated 30s
+                 const expectedDuration = 30;
+                 if (!isNaN(currentTime) && expectedDuration > 0) { // Ensure currentTime is valid
                       progressBar.value = (currentTime / expectedDuration) * 100;
                  } else {
-                      progressBar.value = 0;
+                      progressBar.value = 0; // Cannot show progress
                  }
             }
-
         });
 
          // Update duration when metadata is loaded
          audioPlayer.addEventListener('loadedmetadata', () => {
-              // For Spotify previews, duration might report 30s or NaN
+              // For Spotify previews, duration might report 30s or NaN/Infinity
               const duration = audioPlayer.duration;
-             if (!isNaN(duration) && duration > 0) {
+             if (!isNaN(duration) && duration > 0 && duration < Infinity) { // Check for valid finite duration
                  durationEl.textContent = formatTime(duration);
                  progressBar.max = 100; // Use 100 for percentage
              } else {
-                 // Assume 30 seconds for Spotify previews if duration is unknown
+                 // Assume 30 seconds for Spotify previews if duration is unknown or infinite
                  durationEl.textContent = '0:30';
-                 progressBar.max = 100; // Use 100 for percentage
+                 progressBar.max = 100; // Use 100 for percentage even with estimated duration
              }
               // Reset current time on new track load
              currentTimeEl.textContent = '0:00';
@@ -681,15 +682,16 @@
         progressBar.addEventListener('input', () => {
             const duration = audioPlayer.duration;
              // Try seeking based on actual duration if available and valid
-             if (!isNaN(duration) && duration > 0) {
+             if (!isNaN(duration) && duration > 0 && duration < Infinity) {
                 const seekTime = (progressBar.value / 100) * duration;
                 audioPlayer.currentTime = seekTime;
              } else {
                  // If duration is unknown (like 30s previews), seeking might be less reliable
-                 // or require assuming a fixed duration (like 30s).
-                 // Simple approach: if duration is NaN, don't seek based on percentage of NaN duration.
-                 // You could implement seeking based on percentage of 30s here if needed.
-                 console.warn("Seeking may not be accurate for streams with unknown duration.");
+                 // or require assuming a fixed duration (like 30s) and calculating seek time based on that.
+                 // For simplicity, let's prevent seeking if duration is not reliable.
+                 console.warn("Seeking is not accurate for streams with unknown or infinite duration (e.g., 30s previews).");
+                 // Optionally snap the slider back or disable it while playing previews
+                 progressBar.value = (audioPlayer.currentTime / 30) * 100; // Attempt to snap back to current time based on 30s estimate
              }
         });
 
@@ -700,7 +702,7 @@
 
         // Format time (e.g., 3:45)
         function formatTime(time) {
-            if (isNaN(time)) return '--:--';
+            if (isNaN(time) || time === Infinity) return '--:--';
             const minutes = Math.floor(time / 60);
             const seconds = Math.floor(time % 60);
             const formattedSeconds = seconds < 10 ? `0${seconds}` : seconds;
@@ -711,7 +713,7 @@
 
          function loadAndPlayTrack(trackData) {
              // trackData is the object received directly from the backend's search endpoint
-             // It includes title, artist, artwork, preview URL, etc.
+             // It includes title, artist, artwork, preview URL, Spotify track ID, etc.
 
              if (!trackData || !trackData.preview) {
                   console.warn("Attempted to load track with no playable preview:", trackData);
@@ -731,8 +733,8 @@
                    durationEl.textContent = '0:00';
                    progressBar.value = 0;
 
-                   // Hide info sections
-                    artistInfoSection.style.display = 'none';
+                   // Hide info sections (lyrics now)
+                   lyricsSection.style.display = 'none';
                   return; // Stop here
              }
 
@@ -743,7 +745,7 @@
 
              // Update UI
              trackTitleEl.textContent = currentTrack.title || 'Unknown Title';
-             trackArtistEl.textContent = `${currentTrack.artist || 'Unknown Artist'} - ${currentTrack.album || 'Unknown Album'} (${currentTrack.source})`;
+             trackArtistEl.textContent = `${currentTrack.artist || 'Unknown Artist'} - ${currentTrack.album || 'Unknown Album'}`; // Removed source tag here for cleaner look
              albumArtEl.src = currentTrack.artwork || 'https://via.placeholder.com/250?text=No+Artwork';
 
              // Update background with blurred album art
@@ -761,47 +763,48 @@
                      playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
                  });
 
-              // Reset and fetch Artist Info
-             artistInfoSection.style.display = 'none'; // Hide while fetching
-             artistInfoContentEl.textContent = 'Fetching artist info...'; // Reset text
+              // Reset and fetch Lyrics
+             lyricsSection.style.display = 'none'; // Hide while fetching
+             lyricsContentEl.textContent = 'Fetching lyrics...'; // Reset text
 
-             // --- Fetch Artist Info (Using Spotify Artist ID) ---
-             if (currentTrack.artistId) { // Check if Spotify Artist ID is available
-                 fetch(`/api/artist/${encodeURIComponent(currentTrack.artistId)}`) // Call backend with Spotify Artist ID
+
+             // --- Fetch Lyrics (Using Spotify Track ID) ---
+             if (currentTrack.id) { // Check if Spotify Track ID is available
+                 fetch(`/api/lyrics-spotify/${encodeURIComponent(currentTrack.id)}`) // Call backend with Spotify Track ID
                      .then(response => {
                          if (!response.ok) {
                               if (response.status === 404) {
-                                 return { error: 'Artist info not found on Spotify.' };
+                                 return { lyrics: 'Lyrics not found for this track.' };
                               }
-                             throw new Error(`HTTP error fetching artist info: ${response.status}`);
+                             throw new Error(`HTTP error fetching lyrics: ${response.status}`);
                          }
                          return response.json();
                      })
-                     .then(artistData => {
-                         console.log("Spotify Artist Info Data:", artistData);
-                         if (artistData && !artistData.error) { // Check if data is valid and not an error object
-                             // Display Spotify artist info
-                             let infoHtml = `<strong>${artistData.name}</strong><br>`;
-                             if (artistData.genres && artistData.genres !== 'N/A') infoHtml += `Genres: ${artistData.genres}<br>`;
-                             if (artistData.followers && artistData.followers !== 'N/A') infoHtml += `Followers: ${artistData.followers}<br>`;
-                             if (artistData.popularity && artistData.popularity !== 'N/A') infoHtml += `Popularity: ${artistData.popularity}/100<br>`;
-                              if (artistData.spotifyUrl && artistData.spotifyUrl !== '#') infoHtml += `<a href="${artistData.spotifyUrl}" target="_blank" style="color: #1DB954; text-decoration: none;">View on Spotify</a>`;
-
-
-                             artistInfoContentEl.innerHTML = infoHtml; // Use innerHTML for formatted text/link
-                             artistInfoSection.style.display = 'block'; // Show section
+                     .then(lyricsData => {
+                         console.log("Lyrics Data:", lyricsData);
+                         if (lyricsData && lyricsData.lyrics && lyricsData.lyrics !== 'Lyrics not found for this track.') { // Check if data is valid and not a 'not found' message
+                             // Display lyrics (backend returns formatted text)
+                             lyricsContentEl.textContent = lyricsData.lyrics;
+                             lyricsSection.style.display = 'block'; // Show section
                          } else {
-                             artistInfoContentEl.textContent = artistData.error || 'Artist info not available.';
+                             lyricsContentEl.textContent = lyricsData.lyrics || 'Lyrics not available.';
                          }
                      })
                      .catch(error => {
-                         console.error('Error fetching artist info:', error);
-                         artistInfoContentEl.textContent = 'Could not load artist info.';
+                         console.error('Error fetching lyrics:', error);
+                         lyricsContentEl.textContent = 'Could not load lyrics.';
                      });
              } else {
-                 console.warn("No Spotify Artist ID available for this track.");
-                 artistInfoContentEl.textContent = 'Artist info not available (No Spotify Artist ID).';
+                 console.warn("No Spotify Track ID available for this track to fetch lyrics.");
+                 lyricsContentEl.textContent = 'Lyrics not available (No Spotify Track ID).';
              }
+
+             // Artist Info fetch removed as requested
+
+
+              // Clear search results after a selection is made
+             searchResultsEl.innerHTML = '';
+              searchQueryInput.value = `${currentTrack.title} by ${currentTrack.artist}`; // Update search input text
          }
 
 
@@ -825,7 +828,7 @@
               searchResultsEl.style.display = 'block'; // Ensure results list is visible
 
              try {
-                 // Call your backend search endpoint (now Spotify only)
+                 // Call your backend search endpoint (now Spotify only, filters for previews)
                  const response = await fetch(`/api/search-tracks?q=${encodeURIComponent(query)}`);
                  const data = await response.json();
 
@@ -852,7 +855,7 @@
                              loadAndPlayTrack(selectedTrackData); // Load and play the selected track
                               // Search results will be cleared after a selection
                              searchResultsEl.innerHTML = '';
-                             searchQueryInput.value = `${selectedTrackData.title} by ${selectedTrackData.artist}`; // Update search input text
+                              // Search input text updated inside loadAndPlayTrack
                          });
                      });
                  } else {
@@ -861,7 +864,7 @@
 
              } catch (error) {
                  console.error('Spotify search failed:', error);
-                 searchResultsEl.innerHTML = '<li>Error during search.</li>';
+                  searchResultsEl.innerHTML = `<li>Error during search: ${error.message || 'Unknown error'}</li>`; // Show specific error if available
              }
          }
 
@@ -873,10 +876,12 @@
                  // Check if the active element is within the search results list
                  if (!searchResultsEl.contains(document.activeElement)) {
                      searchResultsEl.innerHTML = ''; // Clear results
-                     // Also clear the search input text if no selection was made? Optional.
-                     // if (!currentTrack || !currentTrack.title || !searchQueryInput.value.includes(currentTrack.title)) {
-                     //     searchQueryInput.value = '';
-                     // }
+                     // Optionally clear the search input text if it doesn't match the current track
+                      if (currentTrack && searchQueryInput.value.trim() !== `${currentTrack.title} by ${currentTrack.artist}`) {
+                           searchQueryInput.value = ''; // Clear if it's not the current track title
+                      } else if (!currentTrack && searchQueryInput.value.trim() !== '') {
+                           searchQueryInput.value = ''; // Clear if nothing is playing and input is not empty
+                      }
                  }
              }, 200); // 200ms delay
          });
@@ -886,7 +891,7 @@
                if (searchResultsEl.children.length > 0 && searchResultsEl.style.display === 'none') {
                     // Check if the current content is not a status message
                    const firstChildText = searchResultsEl.firstElementChild?.textContent;
-                   if (firstChildText !== 'Searching Spotify...' && firstChildText !== 'No playable previews found on Spotify.' && firstChildText !== 'Error during search.') {
+                   if (firstChildText && !['Searching Spotify...', 'No playable previews found on Spotify.', 'Error during search:'].some(statusText => firstChildText.startsWith(statusText))) {
                        searchResultsEl.style.display = 'block';
                    }
                }
@@ -894,7 +899,7 @@
 
 
          // --- Dark/Light Mode Toggle ---
-         const themeToggleBtn = document.getElementById('themeToggleBtn'); // Re-get element reference here
+         // Using a global constant reference defined outside this scope
          themeToggleBtn.addEventListener('click', () => {
              document.body.classList.toggle('dark-mode');
              const isDarkMode = document.body.classList.contains('dark-mode');
@@ -908,17 +913,17 @@
          // Apply saved theme on page load
          function applySavedTheme() {
              const savedTheme = localStorage.getItem('theme');
+             const themeToggleBtn = document.getElementById('themeToggleBtn'); // Get reference here as well
+
              if (savedTheme === 'dark') {
                  document.body.classList.add('dark-mode');
                  // Update icon immediately
-                 const themeToggleBtn = document.getElementById('themeToggleBtn');
                  if (themeToggleBtn) themeToggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
 
              } else {
                  // Default to light or explicit light mode
                  document.body.classList.remove('dark-mode');
                   // Update icon immediately
-                 const themeToggleBtn = document.getElementById('themeToggleBtn');
                  if (themeToggleBtn) themeToggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
              }
          }
