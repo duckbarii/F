@@ -1,20 +1,23 @@
-# Use official Node.js runtime (Alpine slim version)
+# Use official Node.js 18 alpine image for small size
 FROM node:18-alpine
 
-# Set working directory inside the container
+# Set working directory inside container
 WORKDIR /app
 
-# Copy package.json and package-lock.json (if exists)
+# Install bash for debugging (optional)
+RUN apk add --no-cache bash
+
+# Copy package files first (for caching npm install)
 COPY package*.json ./
 
-# Install app dependencies
+# Install dependencies
 RUN npm install
 
-# Copy all source files
+# Copy all other source files
 COPY . .
 
-# Expose port your app will listen on
+# Expose your app port (adjust if needed)
 EXPOSE 3000
 
 # Start the app
-CMD ["node", "app.js"]
+CMD ["npm", "start"]
