@@ -10,15 +10,15 @@ const port = process.env.PORT || 3000;
 // --- API Keys and Secrets ---
 // IMPORTANT: For production, use environment variables!
 // const LASTFM_API_KEY = process.env.LASTFM_API_KEY;
-// const DEEZER_RAPIDAPI_KEY = process.env.DEEZER_RAPIDAPI_KEY;
-// const SHAZAM_RAPIDAPI_KEY = process.env.SHAZAM_RAPIDAPI_KEY;
-// const GENIUS_RAPIDAPI_KEY = process.env.GENIUS_RAPIDAPI_KEY;
+// const DEEZER_RAPIDAPI_KEY = process.env.DEEZER_RAPIDAPI_KEY; // If you use a different key for Deezer
+// const SHAZAM_RAPIDAPI_KEY = process.env.SHAZAM_RAPIDAPI_KEY; // If you use a different key for Shazam
+// const GENIUS_RAPIDAPI_KEY = process.env.GENIUS_RAPIDAPI_KEY; // Not needed anymore for lyrics
 // const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 // const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 // Hardcoding for example, use environment variables in production!
 const LASTFM_API_KEY = 'ea2e0dbd4e7e3e6489164642b18072f9';
-const RAPIDAPI_KEY = '31764eb588msha5540e4e3f93c68p1df091jsn450ff642f9cb'; // Common RapidAPI key
+const RAPIDAPI_KEY = '31764eb588msha5540e4e3f93c68p1df091jsn450ff642f9cb'; // Common RapidAPI key for Deezer & Shazam
 const SPOTIFY_CLIENT_ID = '85564f2ed8ca48d6824f5ec710801fb7';
 const SPOTIFY_CLIENT_SECRET = 'd3491fbd8e0845b1a8e8be5d0f89c252';
 
@@ -32,7 +32,7 @@ app.use(express.static('public')); // Serve static files from the 'public' direc
 // --- Helper to get Spotify Access Token (Client Credentials Flow) ---
 async function getSpotifyToken() {
     if (spotifyAccessToken) {
-        // Check if token is still valid (optional, can add expiry check)
+        // Check if token is still valid (optional, can add expiry check based on response.data.expires_in)
         return spotifyAccessToken;
     }
 
@@ -40,6 +40,7 @@ async function getSpotifyToken() {
         const authString = `${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`;
         const base64AuthString = Buffer.from(authString).toString('base64');
 
+        console.log('Attempting to get new Spotify token...');
         const response = await axios.post('https://accounts.spotify.com/api/token',
             'grant_type=client_credentials',
             {
@@ -51,10 +52,18 @@ async function getSpotifyToken() {
         );
         spotifyAccessToken = response.data.access_token;
         // Set a timeout to clear the token before it expires (e.g., response.data.expires_in)
-        setTimeout(() => { spotifyAccessToken = null; }, (response.data.expires_in - 60) * 1000); // Clear token 1 min before expiry
+        // Clear token 1 minute before actual expiry
+        const expiresInMs = (response.data.expires_in - 60) * 1000;
+        console.log(`Spotify token obtained, expires in ${response.data.expires_in} seconds.`);
+        setTimeout(() => {
+             spotifyAccessToken = null;
+             console.log('Spotify token expired or cleared.');
+            }, expiresInMs > 0 ? expiresInMs : 1000); // Ensure timeout is positive
+
+
         return spotifyAccessToken;
     } catch (error) {
-        console.error('Error getting Spotify token:', error.response ? error.response.data : error.message);
+        console.error('Error getting Spotify token:', error.response ? (error.response.data || error.response.status) : error.message);
         spotifyAccessToken = null; // Clear token on error
         throw new Error('Could not get Spotify access token');
     }
@@ -63,149 +72,171 @@ async function getSpotifyToken() {
 
 // --- API Endpoints ---
 
-// Search endpoint (proxies requests to different APIs)
+// Endpoint to search for track metadata (using Last.fm)
+// This endpoint ONLY provides metadata, not playable URLs.
 app.get('/api/search', async (req, res) => {
     const query = req.query.q;
-    const apiSource = req.query.api || 'deezer'; // Default to Deezer
     if (!query) {
         return res.status(400).json({ error: 'Search query is required' });
     }
 
+    console.log(`Searching Last.fm for metadata: ${query}`);
     try {
-        let results = [];
-        let audioSourceKey = null; // To identify which API provides a useful preview URL
+        const response = await axios.get('http://ws.audioscrobbler.com/2.0/', {
+            params: {
+                method: 'track.search',
+                track: query,
+                api_key: LASTFM_API_KEY,
+                format: 'json',
+                limit: 30 // Get more results
+            }
+        });
 
-        if (apiSource === 'deezer') {
-            console.log(`Searching Deezer for: ${query}`);
-            const response = await axios.get('https://deezerdevs-deezer.p.rapidapi.com/search', {
-                params: { q: query },
-                headers: {
-                    'x-rapidapi-host': 'deezerdevs-deezer.p.rapidapi.com',
-                    'x-rapidapi-key': RAPIDAPI_KEY
-                }
-            });
-            // Map Deezer results to a common format
-             results = response.data.data.map(track => ({
-                id: track.id,
-                title: track.title,
-                artist: track.artist.name,
-                album: track.album.title,
-                artwork: track.album.cover_medium || track.album.cover_xl, // Use medium or large cover
-                preview: track.preview, // Deezer provides 30s preview
-                source: 'deezer' // Add source identifier
-            }));
-             audioSourceKey = 'preview'; // Indicate that 'preview' field has audio
-             // Filter out results without a preview link
-            results = results.filter(track => track.preview);
+        const results = response.data?.results?.trackmatches?.track;
 
-
-        } else if (apiSource === 'spotify') {
-             console.log(`Searching Spotify for: ${query}`);
-            const token = await getSpotifyToken();
-            const response = await axios.get('https://api.spotify.com/v1/search', {
-                params: {
-                    q: query,
-                    type: 'track',
-                    limit: 20 // Limit results
-                },
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            // Map Spotify results to a common format
-            results = response.data.tracks.items.map(track => ({
-                 id: track.id,
-                 title: track.name,
-                 artist: track.artists.map(a => a.name).join(', '),
-                 album: track.album.name,
-                 artwork: track.album.images[0]?.url || track.album.images[1]?.url || '', // Get largest or medium image
-                 preview: track.preview_url, // Spotify provides 30s preview
-                 source: 'spotify' // Add source identifier
-             }));
-             audioSourceKey = 'preview'; // Indicate that 'preview' field has audio
-             // Filter out results without a preview link
-             results = results.filter(track => track.preview);
-
-
-        } else if (apiSource === 'lastfm') {
-             console.log(`Searching Last.fm for: ${query}`);
-             // Last.fm search is more basic, mainly metadata. No audio previews usually.
-            const response = await axios.get('http://ws.audioscrobbler.com/2.0/', {
-                params: {
-                    method: 'track.search',
-                    track: query,
-                    api_key: LASTFM_API_KEY,
-                    format: 'json',
-                    limit: 20
-                }
-            });
-            // Map Last.fm results
-            results = response.data.results.trackmatches.track.map(track => ({
-                id: track.mbid || `${track.name}-${track.artist}`, // Use MBID or unique string
-                title: track.name,
-                artist: track.artist,
-                album: 'N/A', // Last.fm search doesn't always provide album in this view
-                artwork: track.image ? track.image.find(img => img.size === 'large' || img.size === 'medium')['#text'] : '', // Find image
-                preview: null, // Last.fm usually doesn't have previews here
-                source: 'lastfm' // Add source identifier
-            }));
-             audioSourceKey = null; // No audio source directly from Last.fm search
-
-        } else {
-            return res.status(400).json({ error: 'Invalid API source specified' });
+        if (!results || results.length === 0) {
+             return res.json({ results: [] });
         }
 
-        res.json({ results, audioSourceKey });
+        // Map Last.fm results - ensure structure is useful for frontend
+        const formattedResults = results.map(track => ({
+            // Use a unique identifier, but note this is NOT for playing
+            id: track.mbid || `${track.name}-${track.artist}`,
+            title: track.name,
+            artist: track.artist,
+            // Find a suitable image URL (large, medium, or empty string)
+            artwork: track.image ?
+                     (track.image.find(img => img.size === 'large' || img.size === 'medium' || img.size === 'small') || { '#text': '' })['#text']
+                     : '',
+            source: 'lastfm' // Indicate source
+            // IMPORTANT: NO 'preview' field here.
+        }));
+
+        res.json({ results: formattedResults });
 
     } catch (error) {
-        console.error(`Error searching ${apiSource}:`, error.response ? error.response.data : error.message);
-        res.status(500).json({ error: `Failed to search on ${apiSource}` });
+        console.error('Error searching Last.fm:', error.response ? (error.response.data || error.response.status) : error.message);
+        res.status(500).json({ error: 'Failed to search on Last.fm' });
     }
 });
 
-// Endpoint to get lyrics (using Genius)
-// Note: Genius API often requires the track ID from their platform.
-// The search results from other APIs might not contain the Genius ID.
-// A more robust implementation would search Genius separately or link by title/artist.
-app.get('/api/lyrics/:trackId', async (req, res) => {
-    const trackId = req.params.trackId;
-     // This ID needs to be a Genius track ID. Using a placeholder here.
-     // A real implementation needs to find the Genius ID based on the searched track.
-     const geniusTrackId = req.query.geniusId || trackId; // Allow passing Genius ID
+// NEW Endpoint: Find a playable track URL based on Title and Artist
+// This endpoint will try Spotify first, then Deezer.
+app.get('/api/get-playable-track', async (req, res) => {
+     const { title, artist } = req.query;
 
-    console.log(`Fetching lyrics for Genius ID: ${geniusTrackId}`);
-    try {
-        const response = await axios.get(`https://genius-song-lyrics1.p.rapidapi.com/song/lyrics/?id=${geniusTrackId}`, {
-             headers: {
-                 'x-rapidapi-host': 'genius-song-lyrics1.p.rapidapi.com',
-                 'x-rapidapi-key': RAPIDAPI_KEY
+     if (!title || !artist) {
+         return res.status(400).json({ error: 'Title and artist are required to find a playable track.' });
+     }
+
+     const searchQuery = `${title} artist:${artist}`; // Refined query for better results
+
+     console.log(`Attempting to find playable track for: "${title}" by ${artist}`);
+
+     try {
+         // --- 1. Try Spotify ---
+         console.log('Trying Spotify...');
+         try {
+             const token = await getSpotifyToken();
+             const spotifyResponse = await axios.get('https://api.spotify.com/v1/search', {
+                 params: {
+                     q: searchQuery, // Use refined query
+                     type: 'track',
+                     limit: 5 // Get a few results to find a good match
+                 },
+                 headers: {
+                     'Authorization': `Bearer ${token}`
+                 }
+             });
+
+             const spotifyTracks = spotifyResponse.data?.tracks?.items || [];
+             // Find a track with a preview URL
+             const playableSpotifyTrack = spotifyTracks.find(track => track.preview_url);
+
+             if (playableSpotifyTrack) {
+                 console.log('Found playable track on Spotify.');
+                 return res.json({
+                     id: playableSpotifyTrack.id,
+                     title: playableSpotifyTrack.name,
+                     artist: playableSpotifyTrack.artists.map(a => a.name).join(', '),
+                     album: playableSpotifyTrack.album.name,
+                     artwork: playableSpotifyTrack.album.images[0]?.url || playableSpotifyTrack.album.images[1]?.url || '',
+                     preview: playableSpotifyTrack.preview_url, // This is the playable URL
+                     source: 'spotify',
+                     // Optionally include original Last.fm info if needed later
+                     original_title: title,
+                     original_artist: artist
+                 });
+             } else {
+                 console.log('Spotify found results but no playable preview.');
              }
-        });
-        // Genius API response structure can be complex, extract just the lyrics text if possible
-        // This part might need adjustment based on actual API response
-         const lyrics = response.data.lyrics.lyrics.body.html; // Example path, check actual response
-        res.json({ lyrics });
-    } catch (error) {
-         console.error('Error fetching lyrics from Genius:', error.response ? error.response.data : error.message);
-         // If the error is a 404 or similar, return no lyrics found
-         if (error.response && error.response.status === 404) {
-             res.status(404).json({ lyrics: 'Lyrics not found for this track ID.' });
-         } else {
-            res.status(500).json({ error: 'Failed to fetch lyrics' });
+
+         } catch (spotifyError) {
+             console.error('Error searching Spotify for playable track:', spotifyError.response ? (spotifyError.response.data || spotifyError.response.status) : spotifyError.message);
+             // Continue to Deezer if Spotify fails
          }
-    }
+
+
+         // --- 2. Try Deezer as Fallback ---
+         console.log('Trying Deezer as fallback...');
+         try {
+             const deezerResponse = await axios.get('https://deezerdevs-deezer.p.rapidapi.com/search', {
+                 params: { q: searchQuery }, // Use refined query
+                 headers: {
+                     'x-rapidapi-host': 'deezerdevs-deezer.p.rapidapi.com',
+                     'x-rapidapi-key': RAPIDAPI_KEY
+                 }
+             });
+
+             const deezerTracks = deezerResponse.data?.data || [];
+             // Find a track with a preview URL
+              const playableDeezerTrack = deezerTracks.find(track => track.preview);
+
+             if (playableDeezerTrack) {
+                 console.log('Found playable track on Deezer.');
+                 return res.json({
+                     id: playableDeezerTrack.id,
+                     title: playableDeezerTrack.title,
+                     artist: playableDeezerTrack.artist.name,
+                     album: playableDeezerTrack.album.title,
+                     artwork: playableDeezerTrack.album.cover_medium || playableDeezerTrack.album.cover_xl,
+                     preview: playableDeezerTrack.preview, // This is the playable URL
+                     source: 'deezer',
+                     original_title: title,
+                     original_artist: artist
+                 });
+             } else {
+                 console.log('Deezer found results but no playable preview.');
+             }
+
+         } catch (deezerError) {
+             console.error('Error searching Deezer for playable track:', deezerError.response ? (deezerError.response.data || deezerError.response.status) : deezerError.message);
+             // Fallback failed
+         }
+
+         // --- If neither found a playable track ---
+         console.log(`No playable track found for "${title}" by ${artist} on Spotify or Deezer.`);
+         res.status(404).json({ error: 'No playable preview found for this track on available sources.' });
+
+
+     } catch (overallError) {
+         console.error('Overall error finding playable track:', overallError.message);
+         res.status(500).json({ error: 'An unexpected error occurred while trying to find a playable track.' });
+     }
 });
 
 
 // Endpoint to get artist info (using Shazam - latest release example)
-// Note: Shazam API often requires their internal artist ID.
-// This example uses the endpoint provided by the user which needs a Shazam Artist ID (73406786 is a placeholder).
-// A real implementation needs to find the Shazam Artist ID based on the artist name from search results.
+// Note: Needs Shazam Artist ID. This is kept but its utility depends on getting the correct ID.
 app.get('/api/artist/:artistId', async (req, res) => {
      const artistId = req.params.artistId;
      // This ID needs to be a Shazam Artist ID. Using a placeholder here.
      // A real implementation needs to find the Shazam Artist ID based on the artist name.
      const shazamArtistId = req.query.shazamId || artistId; // Allow passing Shazam ID
+
+    if (!shazamArtistId || shazamArtistId === 'undefined') { // Basic check for placeholder IDs
+         return res.status(400).json({ error: 'Shazam Artist ID is required.' });
+    }
 
     console.log(`Fetching artist info for Shazam ID: ${shazamArtistId}`);
     try {
@@ -215,12 +246,15 @@ app.get('/api/artist/:artistId', async (req, res) => {
                  'x-rapidapi-key': RAPIDAPI_KEY
              }
         });
-        // The structure of the response is specific to the endpoint (latest release).
-        // A full artist bio would require a different Shazam/Spotify/Last.fm endpoint.
-        // Returning the raw response for now.
-        res.json(response.data); // Or structure the data as needed
+
+         if (!response.data || Object.keys(response.data).length === 0) {
+             res.status(404).json({ error: 'Artist info not found or empty response from Shazam.' });
+         } else {
+            res.json(response.data); // Or structure the data as needed
+         }
+
     } catch (error) {
-        console.error('Error fetching artist info from Shazam:', error.response ? error.response.data : error.message);
+        console.error('Error fetching artist info from Shazam:', error.response ? (error.response.data || error.response.status) : error.message);
          if (error.response && error.response.status === 404) {
              res.status(404).json({ error: 'Artist info not found for this ID.' });
          } else {
@@ -229,8 +263,7 @@ app.get('/api/artist/:artistId', async (req, res) => {
     }
 });
 
-// Deezer Infos Endpoint (user provided, but not useful for search/playback)
-// Keeping it here as an example endpoint
+// Deezer Infos Endpoint (kept as an example, not used in player logic)
 app.get('/api/deezer/infos', async (req, res) => {
     try {
          console.log('Fetching Deezer infos');
@@ -242,13 +275,13 @@ app.get('/api/deezer/infos', async (req, res) => {
         });
         res.json(response.data);
     } catch (error) {
-        console.error('Error fetching Deezer infos:', error.response ? error.response.data : error.message);
+        console.error('Error fetching Deezer infos:', error.response ? (error.response.data || error.response.status) : error.message);
         res.status(500).json({ error: 'Failed to fetch Deezer infos' });
     }
 });
 
 
-// Serve the index.html file for any other requests (SPA routing concept)
+// Serve the index.html file for any other requests
 app.get('*', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
